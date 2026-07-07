@@ -37,27 +37,29 @@ public class TravelPackageController {
 
     /**
      * CREAR un nuevo paquete turístico
-     * URL: POST /api/packages
-     * Acceso: solo ADMIN
+     * URL: POST /api/packages?userId=1
+     * Acceso: solo ADMIN (el servicio valida el rol de userId)
      *
      * @Valid = activa las validaciones del DTO (campos obligatorios, etc.)
      * @RequestBody = lee los datos que vienen en el cuerpo de la petición (JSON)
      */
     @PostMapping
     public ResponseEntity<TravelPackage> createPackage(
+            @RequestParam Long userId,
             @Valid @RequestBody CreatePackageRequest request) {
-        TravelPackage created = packageService.createPackage(request);
+        TravelPackage created = packageService.createPackage(userId, request);
         // Retorna 201 CREATED con el paquete creado
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     /**
-     * OBTENER todos los paquetes (admin ve todos)
-     * URL: GET /api/packages
+     * OBTENER todos los paquetes, incluidos los no disponibles.
+     * URL: GET /api/packages?userId=1
+     * Acceso: solo ADMIN
      */
     @GetMapping
-    public ResponseEntity<List<TravelPackage>> getAllPackages() {
-        return ResponseEntity.ok(packageService.getAllPackages());
+    public ResponseEntity<List<TravelPackage>> getAllPackages(@RequestParam Long userId) {
+        return ResponseEntity.ok(packageService.getAllPackages(userId));
     }
 
     /**
@@ -71,7 +73,7 @@ public class TravelPackageController {
 
     /**
      * BUSCAR paquetes con filtros (Épica 3)
-     * URL: GET /api/packages/search?destination=Peru&minPrice=500&maxPrice=2000
+     * URL: GET /api/packages/search?destination=Peru&minPrice=500&maxPrice=2000&travelType=Aventura&season=Alta
      *
      * @RequestParam = lee los parámetros de la URL
      * required = false: el parámetro es opcional
@@ -81,9 +83,11 @@ public class TravelPackageController {
             @RequestParam(required = false) String destination,
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
-            @RequestParam(required = false) LocalDate startDate) {
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) String travelType,
+            @RequestParam(required = false) String season) {
         return ResponseEntity.ok(
-                packageService.searchPackages(destination, minPrice, maxPrice, startDate));
+                packageService.searchPackages(destination, minPrice, maxPrice, startDate, travelType, season));
     }
 
     /**
@@ -99,25 +103,27 @@ public class TravelPackageController {
 
     /**
      * ACTUALIZAR un paquete existente
-     * URL: PUT /api/packages/5
+     * URL: PUT /api/packages/5?userId=1
      * Acceso: solo ADMIN
      */
     @PutMapping("/{id}")
     public ResponseEntity<TravelPackage> updatePackage(
+            @RequestParam Long userId,
             @PathVariable Long id,
             @Valid @RequestBody CreatePackageRequest request) {
-        return ResponseEntity.ok(packageService.updatePackage(id, request));
+        return ResponseEntity.ok(packageService.updatePackage(userId, id, request));
     }
 
     /**
      * CAMBIAR ESTADO de un paquete
-     * URL: PATCH /api/packages/5/status?status=CANCELLED
+     * URL: PATCH /api/packages/5/status?status=CANCELLED&userId=1
      * Acceso: solo ADMIN
      */
     @PatchMapping("/{id}/status")
     public ResponseEntity<TravelPackage> changeStatus(
+            @RequestParam Long userId,
             @PathVariable Long id,
             @RequestParam PackageStatus status) {
-        return ResponseEntity.ok(packageService.changeStatus(id, status));
+        return ResponseEntity.ok(packageService.changeStatus(userId, id, status));
     }
 }

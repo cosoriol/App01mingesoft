@@ -1,7 +1,10 @@
 package com.travelagency.repository;
 
+import com.travelagency.dto.response.BookingStatusCountResponse;
+import com.travelagency.dto.response.PackagePopularityResponse;
 import com.travelagency.entity.Booking;
 import com.travelagency.entity.BookingStatus;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -67,4 +70,41 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
      * (creadas hace más de 30 minutos) y expirarlas automáticamente.
      */
     List<Booking> findByStatusAndCreatedAtBefore(BookingStatus status, LocalDateTime cutoff);
+
+    /**
+     * Todas las reservas que NO están en un estado dado.
+     *
+     * Épica 7: se usa para analizar la efectividad de descuentos sobre
+     * todas las reservas "reales" del sistema (excluyendo CANCELLED,
+     * que nunca se tradujeron en un descuento realmente otorgado).
+     */
+    List<Booking> findByStatusNot(BookingStatus status);
+
+    /**
+     * Ranking de paquetes por cantidad de reservas (excluye CANCELLED).
+     *
+     * Épica 7: reporte de "paquetes más reservados". Usa una consulta
+     * JPQL con "constructor expression": en vez de devolver entidades,
+     * arma directamente el DTO de respuesta desde la base de datos.
+     *
+     * Recibe un Pageable solo para poder limitar el resultado (ej.
+     * "los primeros 10"); no se usa paginación real página a página.
+     */
+    @Query("SELECT new com.travelagency.dto.response.PackagePopularityResponse(" +
+           "p.id, p.name, p.destination, COUNT(b), SUM(b.passengerCount)) " +
+           "FROM Booking b JOIN b.travelPackage p " +
+           "WHERE b.status <> 'CANCELLED' " +
+           "GROUP BY p.id, p.name, p.destination " +
+           "ORDER BY COUNT(b) DESC")
+    List<PackagePopularityResponse> findMostBookedPackages(Pageable pageable);
+
+    /**
+     * Cuenta cuántas reservas hay en cada estado (PENDING, CONFIRMED,
+     * CANCELLED, EXPIRED), considerando TODAS las reservas del sistema.
+     *
+     * Épica 7: reporte de "resumen de reservas por estado".
+     */
+    @Query("SELECT new com.travelagency.dto.response.BookingStatusCountResponse(b.status, COUNT(b)) " +
+           "FROM Booking b GROUP BY b.status")
+    List<BookingStatusCountResponse> countBookingsByStatus();
 }

@@ -5,17 +5,18 @@ import com.travelagency.entity.*;
 import com.travelagency.exception.BusinessRuleException;
 import com.travelagency.exception.ResourceNotFoundException;
 import com.travelagency.repository.BookingRepository;
+import com.travelagency.repository.PaymentRepository;
 import com.travelagency.repository.TravelPackageRepository;
 import com.travelagency.repository.UserRepository;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Field;
@@ -26,6 +27,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
@@ -36,8 +38,12 @@ import static org.mockito.Mockito.*;
  * Cada regla tiene al menos un test positivo (caso que debe
  * funcionar) y uno negativo (caso que debe fallar/rechazarse).
  *
- * Se mockean los repositorios (no se toca una base de datos real);
- * el objetivo es probar SOLO la lógica de BookingService.
+ * Se mockean los repositorios y DiscountService (no se toca una base
+ * de datos real); el objetivo es probar SOLO la lógica de
+ * BookingService. La matemática real de los descuentos (montos,
+ * porcentajes, tope, promociones) se prueba en DiscountServiceTest;
+ * aquí solo se verifica que BookingService use correctamente lo que
+ * DiscountService le devuelve.
  */
 @ExtendWith(MockitoExtension.class)
 class BookingServiceTest {
@@ -51,19 +57,43 @@ class BookingServiceTest {
     @Mock
     private UserRepository userRepository;
 
-    @InjectMocks
+    @Mock
+    private PaymentRepository paymentRepository;
+
+    @Mock
+    private DiscountService discountService;
+
     private BookingService bookingService;
+
+    /**
+     * BookingService ahora depende de AccessControlService (que a su
+     * vez usa UserRepository). En vez de mockear AccessControlService,
+     * se construye una instancia REAL apoyada en el mismo
+     * userRepository ya mockeado — así los tests de owner/admin de
+     * más abajo siguen funcionando exactamente igual que antes.
+     */
+    @BeforeEach
+    void setUp() {
+        AccessControlService accessControlService = new AccessControlService(userRepository);
+        bookingService = new BookingService(
+                bookingRepository, packageRepository, userRepository, paymentRepository,
+                discountService, accessControlService);
+    }
 
     // ============================================================
     // HELPERS: construyen objetos de prueba con valores por defecto
     // ============================================================
 
     private User buildUser(Long id) {
+        return buildUser(id, "CLIENT");
+    }
+
+    private User buildUser(Long id, String role) {
         return User.builder()
                 .id(id)
-                .fullName("Cliente de Prueba")
-                .email("cliente" + id + "@example.com")
-                .role("CLIENT")
+                .fullName("Usuario de Prueba " + id)
+                .email("usuario" + id + "@example.com")
+                .role(role)
                 .active(true)
                 .build();
     }
@@ -92,13 +122,19 @@ class BookingServiceTest {
 
     /**
      * Configura los mocks compartidos para un flujo de creación de
-     * reserva "feliz": usuario y paquete existen, sin descuentos.
+     * reserva "feliz": usuario y paquete existen, sin descuentos
+     * (DiscountService mockeado para devolver totalAmount = baseAmount).
      */
     private void mockHappyPath(User user, TravelPackage travelPackage) {
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
         when(packageRepository.findById(travelPackage.getId())).thenReturn(Optional.of(travelPackage));
-        when(bookingRepository.countByUserIdAndStatus(anyLong(), any(BookingStatus.class))).thenReturn(0L);
-        when(bookingRepository.countRecentBookingsByUser(anyLong(), any(LocalDateTime.class))).thenReturn(0L);
+        when(discountService.calculateDiscounts(anyLong(), anyInt(), any(BigDecimal.class)))
+                .thenAnswer(invocation -> {
+                    BigDecimal baseAmount = invocation.getArgument(2);
+                    return new DiscountCalculationResult(
+                            BigDecimal.ZERO, BigDecimal.ZERO, baseAmount, List.of(), "[]",
+                            "No se aplicaron descuentos");
+                });
         when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(packageRepository.save(any(TravelPackage.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
@@ -311,27 +347,31 @@ class BookingServiceTest {
     }
 
     @Test
-    void regla7_negativo_montoFinalNuncaEsNegativo_inclusoConTodosLosDescuentosAcumulados() {
+    void regla7_negativo_bookingServiceUsaElResultadoDeDiscountServiceSinRecalcular() {
+        // La matemática real de los descuentos (grupo + cliente frecuente +
+        // multi-paquete + tope) se prueba en DiscountServiceTest. Aquí solo
+        // verificamos que BookingService no recalcule nada por su cuenta:
+        // debe usar EXACTAMENTE lo que DiscountService le entrega, incluso
+        // cuando el monto final ya viene en 0 (el descuento "comió" todo).
         User user = buildUser(1L);
         TravelPackage travelPackage = buildPackage(1L, PackageStatus.AVAILABLE, 20, 0);
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(packageRepository.findById(1L)).thenReturn(Optional.of(travelPackage));
-        // Se activan los 3 descuentos a la vez:
-        // grupo (>=4 pasajeros) 5% + cliente frecuente (>=3 confirmadas) 10%
-        // + multi-paquete (>=1 reciente) 3% = 18% acumulado (bajo el tope de 20%)
-        when(bookingRepository.countByUserIdAndStatus(anyLong(), any(BookingStatus.class))).thenReturn(5L);
-        when(bookingRepository.countRecentBookingsByUser(anyLong(), any(LocalDateTime.class))).thenReturn(2L);
         when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(packageRepository.save(any(TravelPackage.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
+        DiscountCalculationResult mockedResult = new DiscountCalculationResult(
+                new BigDecimal("18.00"), new BigDecimal("72.00"), new BigDecimal("328.00"),
+                List.of(), "[]", "Total: 18.00% (tope: 20.00%)");
+        when(discountService.calculateDiscounts(eq(1L), eq(4), any(BigDecimal.class)))
+                .thenReturn(mockedResult);
+
         Booking result = bookingService.createBooking(1L, buildRequest(1L, 4));
 
-        // El monto final jamás debe ser negativo, sin importar cuántos
-        // descuentos se acumulen.
         assertTrue(result.getTotalAmount().compareTo(BigDecimal.ZERO) >= 0);
-        // 18% acumulado sobre 400.00 = 72.00 de descuento -> total 328.00
         assertEquals(0, new BigDecimal("18.00").compareTo(result.getDiscountPercentage()));
+        assertEquals(0, new BigDecimal("72.00").compareTo(result.getDiscountAmount()));
         assertEquals(0, new BigDecimal("328.00").compareTo(result.getTotalAmount()));
     }
 
@@ -433,5 +473,237 @@ class BookingServiceTest {
         assertEquals(0, expiredCount);
         verify(bookingRepository, never()).save(any());
         verify(packageRepository, never()).save(any());
+    }
+
+    // ============================================================
+    // CANCELACIÓN DE RESERVAS (Épica 6: seguimiento de reservas)
+    // ============================================================
+
+    private Booking buildBooking(Long id, User owner, TravelPackage travelPackage,
+                                  int passengerCount, BookingStatus status) {
+        return Booking.builder()
+                .id(id)
+                .user(owner)
+                .travelPackage(travelPackage)
+                .passengerCount(passengerCount)
+                .baseAmount(new BigDecimal("100.00"))
+                .totalAmount(new BigDecimal("100.00"))
+                .status(status)
+                .createdAt(LocalDateTime.now())
+                .build();
+    }
+
+    @Test
+    void cancelacion_positivo_dueñoCancelaSuPropiaReservaPending_liberaCupos() {
+        User owner = buildUser(1L);
+        TravelPackage travelPackage = buildPackage(1L, PackageStatus.AVAILABLE, 10, 3);
+        Booking booking = buildBooking(5L, owner, travelPackage, 3, BookingStatus.PENDING);
+
+        when(bookingRepository.findById(5L)).thenReturn(Optional.of(booking));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(owner));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(packageRepository.save(any(TravelPackage.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Booking result = bookingService.cancelBooking(5L, 1L);
+
+        assertEquals(BookingStatus.CANCELLED, result.getStatus());
+        assertEquals(0, travelPackage.getBookedSlots());
+        verify(paymentRepository, never()).findByBookingId(any()); // no estaba pagada, no hay nada que reembolsar
+    }
+
+    @Test
+    void cancelacion_positivo_adminPuedeCancelarReservaDeOtroUsuario() {
+        User owner = buildUser(1L);
+        User admin = buildUser(2L, "ADMIN");
+        TravelPackage travelPackage = buildPackage(1L, PackageStatus.AVAILABLE, 10, 2);
+        Booking booking = buildBooking(5L, owner, travelPackage, 2, BookingStatus.PENDING);
+
+        when(bookingRepository.findById(5L)).thenReturn(Optional.of(booking));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(admin));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(packageRepository.save(any(TravelPackage.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        assertDoesNotThrow(() -> bookingService.cancelBooking(5L, 2L));
+    }
+
+    @Test
+    void cancelacion_negativo_usuarioNoDueñoNiAdmin_lanzaBusinessRuleException() {
+        User owner = buildUser(1L);
+        User intruso = buildUser(2L, "CLIENT");
+        TravelPackage travelPackage = buildPackage(1L, PackageStatus.AVAILABLE, 10, 2);
+        Booking booking = buildBooking(5L, owner, travelPackage, 2, BookingStatus.PENDING);
+
+        when(bookingRepository.findById(5L)).thenReturn(Optional.of(booking));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(intruso));
+
+        BusinessRuleException ex = assertThrows(BusinessRuleException.class,
+                () -> bookingService.cancelBooking(5L, 2L));
+
+        assertTrue(ex.getMessage().contains("not allowed"));
+        verify(packageRepository, never()).save(any());
+    }
+
+    @Test
+    void cancelacion_negativo_reservaYaCancelada_lanzaBusinessRuleException() {
+        User owner = buildUser(1L);
+        TravelPackage travelPackage = buildPackage(1L, PackageStatus.AVAILABLE, 10, 0);
+        Booking booking = buildBooking(5L, owner, travelPackage, 2, BookingStatus.CANCELLED);
+
+        when(bookingRepository.findById(5L)).thenReturn(Optional.of(booking));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(owner));
+
+        assertThrows(BusinessRuleException.class, () -> bookingService.cancelBooking(5L, 1L));
+    }
+
+    @Test
+    void cancelacion_negativo_bugFix_reservaExpirada_noPermiteCancelarNiDescontarCuposDeNuevo() {
+        // Esta reserva ya fue expirada por el scheduler (Regla 10 de la Épica 4),
+        // que ya liberó sus cupos. Antes del fix, cancelarla volvía a restar
+        // los cupos, dejando bookedSlots en negativo.
+        User owner = buildUser(1L);
+        TravelPackage travelPackage = buildPackage(1L, PackageStatus.AVAILABLE, 10, 0);
+        Booking booking = buildBooking(5L, owner, travelPackage, 2, BookingStatus.EXPIRED);
+
+        when(bookingRepository.findById(5L)).thenReturn(Optional.of(booking));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(owner));
+
+        BusinessRuleException ex = assertThrows(BusinessRuleException.class,
+                () -> bookingService.cancelBooking(5L, 1L));
+
+        assertTrue(ex.getMessage().contains("already expired"));
+        verify(packageRepository, never()).save(any());
+        assertEquals(0, travelPackage.getBookedSlots()); // los cupos NO se tocan de nuevo
+    }
+
+    @Test
+    void cancelacion_positivo_reservaConfirmadaYaPagada_marcaElPagoComoReembolsado() {
+        User owner = buildUser(1L);
+        TravelPackage travelPackage = buildPackage(1L, PackageStatus.AVAILABLE, 10, 2);
+        Booking booking = buildBooking(5L, owner, travelPackage, 2, BookingStatus.CONFIRMED);
+        Payment payment = Payment.builder()
+                .id(1L)
+                .booking(booking)
+                .amount(new BigDecimal("100.00"))
+                .paymentMethod("CREDIT_CARD")
+                .paymentStatus("APPROVED")
+                .build();
+
+        when(bookingRepository.findById(5L)).thenReturn(Optional.of(booking));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(owner));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(packageRepository.save(any(TravelPackage.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(paymentRepository.findByBookingId(5L)).thenReturn(Optional.of(payment));
+
+        bookingService.cancelBooking(5L, 1L);
+
+        ArgumentCaptor<Payment> captor = ArgumentCaptor.forClass(Payment.class);
+        verify(paymentRepository).save(captor.capture());
+        assertEquals("REFUNDED", captor.getValue().getPaymentStatus());
+    }
+
+    // ============================================================
+    // FILTRO DE RESERVAS POR ESTADO (Épica 6: seguimiento de reservas)
+    // ============================================================
+
+    @Test
+    void filtroEstado_positivo_devuelveSoloReservasDelEstadoSolicitado() {
+        User user = buildUser(1L);
+        TravelPackage travelPackage = buildPackage(1L, PackageStatus.AVAILABLE, 10, 0);
+        Booking confirmedBooking = buildBooking(1L, user, travelPackage, 2, BookingStatus.CONFIRMED);
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(bookingRepository.findByUserIdAndStatus(1L, BookingStatus.CONFIRMED))
+                .thenReturn(List.of(confirmedBooking));
+
+        List<Booking> result = bookingService.getBookingsByUserAndStatus(1L, BookingStatus.CONFIRMED, 1L);
+
+        assertEquals(1, result.size());
+        assertEquals(BookingStatus.CONFIRMED, result.get(0).getStatus());
+    }
+
+    @Test
+    void filtroEstado_negativo_sinReservasEnEseEstado_devuelveListaVacia() {
+        User user = buildUser(1L);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(bookingRepository.findByUserIdAndStatus(1L, BookingStatus.CANCELLED))
+                .thenReturn(List.of());
+
+        List<Booking> result = bookingService.getBookingsByUserAndStatus(1L, BookingStatus.CANCELLED, 1L);
+
+        assertTrue(result.isEmpty());
+    }
+
+    // ============================================================
+    // CONTROL DE ACCESO EN LECTURA (Épica 6: corrección de bug de
+    // privacidad — antes cualquiera veía las reservas de cualquiera)
+    // ============================================================
+
+    @Test
+    void getBookingsByUser_positivo_elPropioUsuarioVeSuHistorial() {
+        User user = buildUser(1L);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(bookingRepository.findByUserId(1L)).thenReturn(List.of());
+
+        assertDoesNotThrow(() -> bookingService.getBookingsByUser(1L, 1L));
+    }
+
+    @Test
+    void getBookingsByUser_positivo_adminVeElHistorialDeOtroUsuario() {
+        User admin = buildUser(2L, "ADMIN");
+        when(userRepository.findById(2L)).thenReturn(Optional.of(admin));
+        when(bookingRepository.findByUserId(1L)).thenReturn(List.of());
+
+        assertDoesNotThrow(() -> bookingService.getBookingsByUser(1L, 2L));
+    }
+
+    @Test
+    void getBookingsByUser_negativo_otroClienteNoPuedeVerHistorialAjeno() {
+        User intruso = buildUser(2L, "CLIENT");
+        when(userRepository.findById(2L)).thenReturn(Optional.of(intruso));
+
+        assertThrows(BusinessRuleException.class, () -> bookingService.getBookingsByUser(1L, 2L));
+        verify(bookingRepository, never()).findByUserId(any());
+    }
+
+    @Test
+    void getAllBookings_positivo_adminPuedeVerTodas() {
+        User admin = buildUser(1L, "ADMIN");
+        when(userRepository.findById(1L)).thenReturn(Optional.of(admin));
+        when(bookingRepository.findAll()).thenReturn(List.of());
+
+        assertDoesNotThrow(() -> bookingService.getAllBookings(1L));
+    }
+
+    @Test
+    void getAllBookings_negativo_clienteNoPuedeVerTodas() {
+        User client = buildUser(1L, "CLIENT");
+        when(userRepository.findById(1L)).thenReturn(Optional.of(client));
+
+        assertThrows(BusinessRuleException.class, () -> bookingService.getAllBookings(1L));
+        verify(bookingRepository, never()).findAll();
+    }
+
+    @Test
+    void getBookingByIdForRequester_positivo_elDueñoVeSuPropiaReserva() {
+        User owner = buildUser(1L);
+        TravelPackage travelPackage = buildPackage(1L, PackageStatus.AVAILABLE, 10, 2);
+        Booking booking = buildBooking(5L, owner, travelPackage, 2, BookingStatus.PENDING);
+        when(bookingRepository.findById(5L)).thenReturn(Optional.of(booking));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(owner));
+
+        assertDoesNotThrow(() -> bookingService.getBookingByIdForRequester(5L, 1L));
+    }
+
+    @Test
+    void getBookingByIdForRequester_negativo_otroClienteNoPuedeVerReservaAjena() {
+        User owner = buildUser(1L);
+        User intruso = buildUser(2L, "CLIENT");
+        TravelPackage travelPackage = buildPackage(1L, PackageStatus.AVAILABLE, 10, 2);
+        Booking booking = buildBooking(5L, owner, travelPackage, 2, BookingStatus.PENDING);
+        when(bookingRepository.findById(5L)).thenReturn(Optional.of(booking));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(intruso));
+
+        assertThrows(BusinessRuleException.class,
+                () -> bookingService.getBookingByIdForRequester(5L, 2L));
     }
 }

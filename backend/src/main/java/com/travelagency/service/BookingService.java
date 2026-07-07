@@ -5,27 +5,27 @@ import com.travelagency.entity.*;
 import com.travelagency.exception.BusinessRuleException;
 import com.travelagency.exception.ResourceNotFoundException;
 import com.travelagency.repository.BookingRepository;
+import com.travelagency.repository.PaymentRepository;
 import com.travelagency.repository.TravelPackageRepository;
 import com.travelagency.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
  * SERVICIO DE RESERVAS (Capa Service)
  * =====================================
  * Contiene la lógica de negocio más compleja del sistema:
- * crear reservas, calcular descuentos, validar cupos.
+ * crear reservas, validar cupos, coordinar el cálculo de descuentos.
  *
  * Épica 4: Proceso de reserva en línea
  *
- * ESTA ES LA CLASE MÁS IMPORTANTE DEL PROYECTO.
- * Aquí se implementan las reglas de descuentos y validaciones.
+ * El CÁLCULO de descuentos ya no vive aquí: se delega por completo a
+ * DiscountService (responsabilidad única). BookingService solo arma
+ * la reserva con el resultado que DiscountService le entrega.
  */
 @Service
 @RequiredArgsConstructor
@@ -35,32 +35,9 @@ public class BookingService {
     private final BookingRepository bookingRepository;
     private final TravelPackageRepository packageRepository;
     private final UserRepository userRepository;
-
-    // ============================================================
-    // CONSTANTES DE CONFIGURACIÓN DE DESCUENTOS
-    // Estas son las reglas de negocio para los descuentos
-    // ============================================================
-
-    /** Mínimo de pasajeros para descuento por grupo */
-    private static final int GROUP_DISCOUNT_THRESHOLD = 4;
-
-    /** Porcentaje de descuento por grupo (5%) */
-    private static final BigDecimal GROUP_DISCOUNT_PERCENT = new BigDecimal("5.00");
-
-    /** Mínimo de reservas confirmadas para ser "cliente frecuente" */
-    private static final int FREQUENT_CLIENT_THRESHOLD = 3;
-
-    /** Porcentaje de descuento para cliente frecuente (10%) */
-    private static final BigDecimal FREQUENT_DISCOUNT_PERCENT = new BigDecimal("10.00");
-
-    /** Mínimo de reservas recientes para descuento multi-paquete */
-    private static final int MULTI_PACKAGE_THRESHOLD = 1;
-
-    /** Porcentaje de descuento por múltiples paquetes (3%) */
-    private static final BigDecimal MULTI_PACKAGE_DISCOUNT_PERCENT = new BigDecimal("3.00");
-
-    /** Máximo de descuento acumulable (20%) */
-    private static final BigDecimal MAX_DISCOUNT_PERCENT = new BigDecimal("20.00");
+    private final PaymentRepository paymentRepository;
+    private final DiscountService discountService;
+    private final AccessControlService accessControlService;
 
     /** Minutos tras los cuales una reserva PENDING sin pagar expira automáticamente */
     private static final long PENDING_EXPIRATION_MINUTES = 30;
@@ -117,20 +94,16 @@ public class BookingService {
                     + ", Available: " + availableSlots);
         }
 
-        // REGLA 7: monto base = precio por persona × cantidad de pasajeros.
+        // REGLA 6 (paso 1): monto base = precio por persona × cantidad de pasajeros.
         BigDecimal pricePerPerson = travelPackage.getPrice();
         BigDecimal baseAmount = pricePerPerson.multiply(
                 BigDecimal.valueOf(request.getPassengerCount()));
 
-        // REGLA 7: calcular descuentos aplicables (grupo, cliente frecuente, multi-paquete).
-        DiscountResult discountResult = calculateDiscounts(
+        // REGLA 6 (pasos 2-9): todo el cálculo de descuentos (grupo, cliente
+        // frecuente, multi-paquete, promociones, tope máximo, monto final)
+        // se delega a DiscountService.
+        DiscountCalculationResult discountResult = discountService.calculateDiscounts(
                 userId, request.getPassengerCount(), baseAmount);
-
-        // REGLA 7: monto final = monto base - descuentos (nunca negativo).
-        BigDecimal totalAmount = baseAmount.subtract(discountResult.discountAmount);
-        if (totalAmount.compareTo(BigDecimal.ZERO) < 0) {
-            totalAmount = BigDecimal.ZERO;
-        }
 
         // REGLA 6: el id se genera automáticamente al guardar (@GeneratedValue en Booking).
         // REGLA 8: toda reserva nueva comienza en estado PENDING.
@@ -139,10 +112,11 @@ public class BookingService {
                 .travelPackage(travelPackage)
                 .passengerCount(request.getPassengerCount())
                 .baseAmount(baseAmount)
-                .discountPercentage(discountResult.totalPercentage)
-                .discountAmount(discountResult.discountAmount)
-                .totalAmount(totalAmount)
-                .discountDetails(discountResult.details)
+                .discountPercentage(discountResult.totalPercentage())
+                .discountAmount(discountResult.discountAmount())
+                .totalAmount(discountResult.totalAmount())
+                .discountDetails(discountResult.discountDetailsJson())
+                .discountSummary(discountResult.discountSummary())
                 .status(BookingStatus.PENDING)
                 .build();
 
@@ -163,95 +137,45 @@ public class BookingService {
     }
 
     /**
-     * CALCULAR DESCUENTOS APLICABLES
-     * ================================
-     * Evalúa todas las reglas de descuento y determina cuáles aplican.
-     *
-     * Tipos de descuento:
-     * 1. Por grupo (≥ 4 pasajeros): 5%
-     * 2. Por cliente frecuente (≥ 3 reservas pagadas): 10%
-     * 3. Por multi-paquete (otra reserva en los últimos 30 días): 3%
-     *
-     * Regla: los descuentos son ACUMULABLES pero con un TOPE de 20%
-     */
-    private DiscountResult calculateDiscounts(Long userId, int passengerCount, BigDecimal baseAmount) {
-
-        BigDecimal totalPercentage = BigDecimal.ZERO;
-        List<String> discountDescriptions = new ArrayList<>();
-
-        // --- Descuento 1: Por grupo ---
-        // Si viajan 4 o más personas, se aplica 5% de descuento
-        if (passengerCount >= GROUP_DISCOUNT_THRESHOLD) {
-            totalPercentage = totalPercentage.add(GROUP_DISCOUNT_PERCENT);
-            discountDescriptions.add("Group discount (" + GROUP_DISCOUNT_THRESHOLD
-                    + "+ passengers): " + GROUP_DISCOUNT_PERCENT + "%");
-        }
-
-        // --- Descuento 2: Cliente frecuente ---
-        // Si el cliente tiene 3 o más reservas confirmadas (pagadas)
-        long confirmedBookings = bookingRepository.countByUserIdAndStatus(
-                userId, BookingStatus.CONFIRMED);
-        if (confirmedBookings >= FREQUENT_CLIENT_THRESHOLD) {
-            totalPercentage = totalPercentage.add(FREQUENT_DISCOUNT_PERCENT);
-            discountDescriptions.add("Frequent client discount ("
-                    + confirmedBookings + " confirmed bookings): "
-                    + FREQUENT_DISCOUNT_PERCENT + "%");
-        }
-
-        // --- Descuento 3: Múltiples paquetes ---
-        // Si el cliente hizo otra reserva en los últimos 30 días
-        long recentBookings = bookingRepository.countRecentBookingsByUser(
-                userId, LocalDateTime.now().minusDays(30));
-        if (recentBookings >= MULTI_PACKAGE_THRESHOLD) {
-            totalPercentage = totalPercentage.add(MULTI_PACKAGE_DISCOUNT_PERCENT);
-            discountDescriptions.add("Multi-package discount: "
-                    + MULTI_PACKAGE_DISCOUNT_PERCENT + "%");
-        }
-
-        // --- Aplicar tope máximo de 20% ---
-        if (totalPercentage.compareTo(MAX_DISCOUNT_PERCENT) > 0) {
-            totalPercentage = MAX_DISCOUNT_PERCENT;
-            discountDescriptions.add("(Capped at maximum " + MAX_DISCOUNT_PERCENT + "%)");
-        }
-
-        // Calcular el monto del descuento en dinero
-        BigDecimal discountAmount = baseAmount
-                .multiply(totalPercentage)
-                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
-
-        String details = discountDescriptions.isEmpty()
-                ? "No discounts applied"
-                : String.join(" | ", discountDescriptions);
-
-        return new DiscountResult(totalPercentage, discountAmount, details);
-    }
-
-    /**
-     * Clase interna para devolver el resultado de los descuentos.
-     */
-    private record DiscountResult(
-            BigDecimal totalPercentage,
-            BigDecimal discountAmount,
-            String details) {}
-
-    /**
      * OBTENER RESERVAS DE UN USUARIO (Épica 6)
+     *
+     * Corrección de bug: antes cualquiera podía ver el historial de
+     * reservas de CUALQUIER usuario con solo cambiar el id en la URL.
+     * Ahora se exige que quien pregunta sea ese mismo usuario o un ADMIN.
      */
     @Transactional(readOnly = true)
-    public List<Booking> getBookingsByUser(Long userId) {
+    public List<Booking> getBookingsByUser(Long userId, Long requestingUserId) {
+        accessControlService.requireOwnerOrAdmin(requestingUserId, userId);
         return bookingRepository.findByUserId(userId);
     }
 
     /**
-     * OBTENER TODAS LAS RESERVAS (para administradores, Épica 6)
+     * OBTENER RESERVAS DE UN USUARIO FILTRADAS POR ESTADO (Épica 6)
+     * Permite al cliente hacer seguimiento de un grupo específico de
+     * reservas, por ejemplo "solo mis reservas confirmadas".
      */
     @Transactional(readOnly = true)
-    public List<Booking> getAllBookings() {
+    public List<Booking> getBookingsByUserAndStatus(Long userId, BookingStatus status, Long requestingUserId) {
+        accessControlService.requireOwnerOrAdmin(requestingUserId, userId);
+        return bookingRepository.findByUserIdAndStatus(userId, status);
+    }
+
+    /**
+     * OBTENER TODAS LAS RESERVAS (para administradores, Épica 6)
+     *
+     * Corrección de bug: antes no verificaba nada — cualquiera podía
+     * volcar las reservas de TODOS los clientes.
+     */
+    @Transactional(readOnly = true)
+    public List<Booking> getAllBookings(Long adminUserId) {
+        accessControlService.requireAdmin(adminUserId);
         return bookingRepository.findAll();
     }
 
     /**
-     * OBTENER UNA RESERVA POR ID
+     * OBTENER UNA RESERVA POR ID (uso interno, sin control de acceso).
+     * La usan cancelBooking/expireStaleBookings, que hacen su propia
+     * verificación (o no la necesitan, por ser tareas del sistema).
      */
     @Transactional(readOnly = true)
     public Booking getBookingById(Long id) {
@@ -261,15 +185,47 @@ public class BookingService {
     }
 
     /**
-     * CANCELAR UNA RESERVA
-     * Al cancelar, se liberan los cupos del paquete.
+     * OBTENER UNA RESERVA POR ID, para un endpoint público.
+     *
+     * Corrección de bug: antes cualquiera podía ver el detalle
+     * financiero de cualquier reserva adivinando el ID.
      */
-    public Booking cancelBooking(Long bookingId) {
+    @Transactional(readOnly = true)
+    public Booking getBookingByIdForRequester(Long id, Long requestingUserId) {
+        Booking booking = getBookingById(id);
+        accessControlService.requireOwnerOrAdmin(requestingUserId, booking.getUser().getId());
+        return booking;
+    }
+
+    /**
+     * CANCELAR UNA RESERVA (Épica 6)
+     * ================================
+     * Al cancelar, se liberan los cupos del paquete. Solo puede
+     * cancelar el dueño de la reserva o un usuario con rol ADMIN.
+     *
+     * @param bookingId       la reserva a cancelar
+     * @param requestingUserId el usuario que solicita la cancelación
+     */
+    public Booking cancelBooking(Long bookingId, Long requestingUserId) {
         Booking booking = getBookingById(bookingId);
+
+        // Control de dueño: solo el cliente dueño de la reserva o un ADMIN
+        // pueden cancelarla (evita que cualquiera cancele reservas ajenas).
+        accessControlService.requireOwnerOrAdmin(requestingUserId, booking.getUser().getId());
 
         if (booking.getStatus() == BookingStatus.CANCELLED) {
             throw new BusinessRuleException("Booking is already cancelled");
         }
+
+        // Corrección de bug: una reserva EXPIRED ya liberó sus cupos
+        // automáticamente (ver expireStaleBookings). Si se permitiera
+        // cancelarla aquí, se descontarían los cupos DOS VECES, dejando
+        // bookedSlots en negativo.
+        if (booking.getStatus() == BookingStatus.EXPIRED) {
+            throw new BusinessRuleException("Cannot cancel a booking that already expired");
+        }
+
+        BookingStatus previousStatus = booking.getStatus();
 
         // Cambiar estado a cancelada
         booking.setStatus(BookingStatus.CANCELLED);
@@ -286,6 +242,16 @@ public class BookingService {
         }
 
         packageRepository.save(travelPackage);
+
+        // Consistencia de datos: si la reserva ya estaba pagada (CONFIRMED),
+        // el pago asociado se marca como reembolsado en vez de dejarlo
+        // como APPROVED, para que el seguimiento/reportes reflejen la realidad.
+        if (previousStatus == BookingStatus.CONFIRMED) {
+            paymentRepository.findByBookingId(bookingId).ifPresent(payment -> {
+                payment.setPaymentStatus("REFUNDED");
+                paymentRepository.save(payment);
+            });
+        }
 
         return booking;
     }

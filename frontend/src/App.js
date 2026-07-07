@@ -3,6 +3,10 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import PackageList from './pages/PackageList';
 import PackageDetail from './pages/PackageDetail';
 import Login from './pages/Login';
+import MyBookings from './pages/MyBookings';
+import Reports from './pages/Reports';
+import AdminPackages from './pages/AdminPackages';
+import Profile from './pages/Profile';
 import './App.css';
 
 /**
@@ -41,6 +45,9 @@ function App() {
           <div className="nav-links">
             <Link to="/">Paquetes</Link>
             <Link to="/my-bookings">Mis Reservas</Link>
+            {currentUser?.role === 'ADMIN' && <Link to="/admin/packages">Paquetes (Admin)</Link>}
+            {currentUser?.role === 'ADMIN' && <Link to="/reports">Reportes</Link>}
+            {currentUser && <Link to="/profile">Mi Perfil</Link>}
             {currentUser ? (
               <>
                 <span className="nav-user">👤 {currentUser.fullName}</span>
@@ -60,9 +67,17 @@ function App() {
             {/* URL "/" muestra la lista de paquetes */}
             <Route path="/" element={<PackageList />} />
             {/* URL "/packages/5" muestra el detalle del paquete 5 */}
-            <Route path="/packages/:id" element={<PackageDetail />} />
+            <Route path="/packages/:id" element={<PackageDetail currentUser={currentUser} />} />
             {/* URL "/login" muestra el formulario de inicio de sesión */}
             <Route path="/login" element={<Login onLogin={setCurrentUser} />} />
+            {/* URL "/my-bookings" muestra el seguimiento de reservas (Épica 6) */}
+            <Route path="/my-bookings" element={<MyBookings currentUser={currentUser} />} />
+            {/* URL "/reports" muestra los reportes administrativos (Épica 7) */}
+            <Route path="/reports" element={<Reports currentUser={currentUser} />} />
+            {/* URL "/admin/packages" administra paquetes turísticos (Épica 2) */}
+            <Route path="/admin/packages" element={<AdminPackages currentUser={currentUser} />} />
+            {/* URL "/profile" edita el perfil del usuario logueado (Épica 1) */}
+            <Route path="/profile" element={<Profile currentUser={currentUser} onProfileUpdated={setCurrentUser} />} />
           </Routes>
         </main>
 

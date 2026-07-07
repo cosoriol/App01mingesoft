@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { getPackageById } from '../services/api';
+import { useParams, useNavigate } from 'react-router-dom';
+import { getPackageById, createBooking } from '../services/api';
 
 /**
  * PÁGINA: Detalle de un Paquete Turístico (Épica 3)
@@ -10,10 +10,14 @@ import { getPackageById } from '../services/api';
  *
  * useParams = obtiene el ID de la URL (Ej: /packages/5 → id = 5)
  */
-function PackageDetail() {
+function PackageDetail({ currentUser }) {
   const { id } = useParams(); // Obtener ID de la URL
+  const navigate = useNavigate();
   const [pkg, setPkg] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [passengerCount, setPassengerCount] = useState(1);
+  const [bookingError, setBookingError] = useState('');
+  const [bookingLoading, setBookingLoading] = useState(false);
 
   useEffect(() => {
     const loadPackage = async () => {
@@ -28,6 +32,30 @@ function PackageDetail() {
     };
     loadPackage();
   }, [id]);
+
+  /**
+   * RESERVAR el paquete actual (Épica 4, conectado desde Épica 6).
+   * Si no hay sesión activa, se manda al login primero.
+   */
+  const handleBooking = async () => {
+    if (!currentUser) {
+      navigate('/login');
+      return;
+    }
+    setBookingError('');
+    setBookingLoading(true);
+    try {
+      await createBooking(currentUser.id, {
+        packageId: pkg.id,
+        passengerCount: Number(passengerCount),
+      });
+      navigate('/my-bookings');
+    } catch (error) {
+      setBookingError(error.response?.data?.error || 'No se pudo crear la reserva');
+    } finally {
+      setBookingLoading(false);
+    }
+  };
 
   if (loading) return <p>Cargando detalle del paquete...</p>;
   if (!pkg) return <p>Paquete no encontrado.</p>;
@@ -80,18 +108,33 @@ function PackageDetail() {
           </>
         )}
 
-        <button style={{
-          background: '#1a73e8',
-          color: 'white',
-          border: 'none',
-          padding: '0.75rem 2rem',
-          borderRadius: '8px',
-          fontSize: '1rem',
-          cursor: 'pointer',
-          marginTop: '1rem'
-        }}>
-          🛒 Reservar ahora
-        </button>
+        {bookingError && <p className="login-error">{bookingError}</p>}
+
+        {pkg.status === 'AVAILABLE' && pkg.availableSlots > 0 ? (
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', marginTop: '1rem' }}>
+            <div className="filter-group">
+              <label>Pasajeros</label>
+              <input
+                type="number"
+                min="1"
+                max={pkg.availableSlots}
+                value={passengerCount}
+                onChange={(e) => setPassengerCount(e.target.value)}
+              />
+            </div>
+            <button
+              className="btn-search"
+              onClick={handleBooking}
+              disabled={bookingLoading}
+            >
+              {bookingLoading ? 'Reservando...' : '🛒 Reservar ahora'}
+            </button>
+          </div>
+        ) : (
+          <p style={{ marginTop: '1rem', color: '#c62828' }}>
+            Este paquete no tiene cupos disponibles.
+          </p>
+        )}
       </div>
     </div>
   );

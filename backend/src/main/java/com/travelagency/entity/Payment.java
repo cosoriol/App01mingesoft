@@ -56,6 +56,17 @@ public class Payment {
     private String cardLastFour;
 
     /**
+     * Nombre del titular de la tarjeta (dato de referencia; nunca se
+     * valida contra un banco real, es un pago simulado).
+     *
+     * nullable = true a nivel de columna a propósito: la obligatoriedad
+     * la impone la validación (@NotBlank en PaymentRequest + chequeo en
+     * PaymentService), no una restricción de la BD. Esto evita romper
+     * filas de pagos que ya existían antes de agregar este campo.
+     */
+    private String cardHolderName;
+
+    /**
      * Estado del pago (siempre "APPROVED" porque es simulado).
      */
     @Column(nullable = false)

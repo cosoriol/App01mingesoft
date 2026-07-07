@@ -43,21 +43,28 @@ public interface TravelPackageRepository extends JpaRepository<TravelPackage, Lo
      * :destination = parámetro que recibe el destino a buscar
      * :minPrice, :maxPrice = rango de precios
      * :startDate = fecha mínima de inicio del viaje
+     * :travelType, :season = tipo de viaje y temporada (Épica 3)
      *
      * La consulta filtra por:
      * 1. Solo paquetes DISPONIBLES
      * 2. Que el destino contenga el texto buscado (si se proporcionó)
      * 3. Que el precio esté dentro del rango (si se proporcionó)
      * 4. Que la fecha de inicio sea posterior a la indicada (si se proporcionó)
+     * 5. Que coincida el tipo de viaje (si se proporcionó)
+     * 6. Que coincida la temporada (si se proporcionó)
      */
     @Query("SELECT p FROM TravelPackage p WHERE p.status = 'AVAILABLE' " +
            "AND (:destination IS NULL OR LOWER(p.destination) LIKE LOWER(CONCAT('%', :destination, '%'))) " +
            "AND (:minPrice IS NULL OR p.price >= :minPrice) " +
            "AND (:maxPrice IS NULL OR p.price <= :maxPrice) " +
-           "AND (:startDate IS NULL OR p.startDate >= :startDate)")
+           "AND (:startDate IS NULL OR p.startDate >= :startDate) " +
+           "AND (:travelType IS NULL OR LOWER(p.travelType) = LOWER(:travelType)) " +
+           "AND (:season IS NULL OR LOWER(p.season) = LOWER(:season))")
     List<TravelPackage> searchPackages(
             @Param("destination") String destination,
             @Param("minPrice") BigDecimal minPrice,
             @Param("maxPrice") BigDecimal maxPrice,
-            @Param("startDate") LocalDate startDate);
+            @Param("startDate") LocalDate startDate,
+            @Param("travelType") String travelType,
+            @Param("season") String season);
 }

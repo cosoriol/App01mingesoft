@@ -80,12 +80,27 @@ public class Booking {
     private BigDecimal totalAmount;
 
     /**
-     * Detalle de los descuentos aplicados.
-     * Ej: "Descuento por grupo: 5%, Cliente frecuente: 10%"
-     * Regla de transparencia: el cliente debe ver qué descuentos se aplicaron
+     * Desglose de los descuentos aplicados, en JSON estructurado
+     * (lista de objetos con type/description/percentage). Se
+     * reconstruye tal cual en BookingResponse.discountDetails.
+     * Regla de transparencia: el cliente debe ver qué descuentos se aplicaron.
      */
     @Column(columnDefinition = "TEXT")
     private String discountDetails;
+
+    /**
+     * Versión en texto plano, legible para humanos, del mismo
+     * desglose. Ej: "Descuento por grupo (4+ pasajeros): 5.0% |
+     * Cliente frecuente (5 reservas confirmadas): 10.0% | Total: 15.0%
+     * (tope: 20.0%)".
+     *
+     * Se guarda YA ARMADA en el momento de la reserva (no se
+     * reconstruye después) para que el tope mostrado sea el que
+     * realmente aplicaba entonces, aunque más adelante cambie en
+     * application.properties.
+     */
+    @Column(columnDefinition = "TEXT")
+    private String discountSummary;
 
     /**
      * Estado de la reserva.

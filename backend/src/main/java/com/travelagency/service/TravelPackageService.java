@@ -31,23 +31,26 @@ import java.util.List;
 @Transactional
 public class TravelPackageService {
 
-    // Spring inyecta automáticamente el repositorio aquí
     private final TravelPackageRepository packageRepository;
+    private final AccessControlService accessControlService;
 
     /**
-     * CREAR un nuevo paquete turístico.
+     * CREAR un nuevo paquete turístico. Solo un ADMIN puede hacerlo.
      *
      * Proceso:
-     * 1. Validar que la fecha de término sea posterior a la de inicio
-     * 2. Validar que el precio sea positivo
+     * 1. Verificar que quien llama es ADMIN
+     * 2. Validar que la fecha de término sea posterior a la de inicio
      * 3. Crear la entidad TravelPackage
      * 4. Guardar en la base de datos
      *
-     * @param request datos del paquete enviados desde el frontend
+     * @param adminUserId ID de quien hace la petición (se valida que sea ADMIN)
+     * @param request     datos del paquete enviados desde el frontend
      * @return el paquete creado con su ID generado
-     * @throws BusinessRuleException si las fechas son inválidas
+     * @throws BusinessRuleException si las fechas son inválidas o quien llama no es ADMIN
      */
-    public TravelPackage createPackage(CreatePackageRequest request) {
+    public TravelPackage createPackage(Long adminUserId, CreatePackageRequest request) {
+        accessControlService.requireAdmin(adminUserId);
+
         // Regla: la fecha de término debe ser posterior a la de inicio
         if (request.getEndDate().isBefore(request.getStartDate()) ||
             request.getEndDate().isEqual(request.getStartDate())) {
@@ -88,10 +91,16 @@ public class TravelPackageService {
     }
 
     /**
-     * OBTENER TODOS los paquetes (para administradores).
+     * OBTENER TODOS los paquetes, incluidos CANCELLED/EXPIRED (para
+     * administradores). Solo un ADMIN puede hacerlo.
+     *
+     * Corrección de bug: antes cualquiera podía ver paquetes que ya
+     * no están en el catálogo público (cancelados, agotados, etc.),
+     * información interna que no debería ser visible para clientes.
      */
     @Transactional(readOnly = true)
-    public List<TravelPackage> getAllPackages() {
+    public List<TravelPackage> getAllPackages(Long adminUserId) {
+        accessControlService.requireAdmin(adminUserId);
         return packageRepository.findAll();
     }
 
@@ -108,26 +117,30 @@ public class TravelPackageService {
      * BUSCAR paquetes con filtros (Épica 3).
      *
      * Los parámetros son opcionales: si son null, no se aplica ese filtro.
-     * Ej: searchPackages("Peru", null, null, null)
+     * Ej: searchPackages("Peru", null, null, null, null, null)
      *     → busca todos los paquetes disponibles con destino "Peru"
      */
     @Transactional(readOnly = true)
     public List<TravelPackage> searchPackages(String destination,
                                                BigDecimal minPrice,
                                                BigDecimal maxPrice,
-                                               LocalDate startDate) {
-        return packageRepository.searchPackages(destination, minPrice, maxPrice, startDate);
+                                               LocalDate startDate,
+                                               String travelType,
+                                               String season) {
+        return packageRepository.searchPackages(destination, minPrice, maxPrice, startDate, travelType, season);
     }
 
     /**
-     * ACTUALIZAR un paquete existente.
+     * ACTUALIZAR un paquete existente. Solo un ADMIN puede hacerlo.
      *
      * Reglas:
      * - No se puede cambiar un paquete cancelado
      * - Las fechas deben seguir siendo válidas
      * - Si tiene reservas, no se pueden reducir cupos por debajo de lo reservado
      */
-    public TravelPackage updatePackage(Long id, CreatePackageRequest request) {
+    public TravelPackage updatePackage(Long adminUserId, Long id, CreatePackageRequest request) {
+        accessControlService.requireAdmin(adminUserId);
+
         TravelPackage existing = getPackageById(id);
 
         // Regla: no modificar paquetes cancelados
@@ -163,14 +176,17 @@ public class TravelPackageService {
     }
 
     /**
-     * CAMBIAR ESTADO de un paquete.
+     * CAMBIAR ESTADO de un paquete. Solo un ADMIN puede hacerlo.
      *
      * Regla: un paquete con reservas no se puede eliminar,
      *        solo cambiar su estado.
      */
-    public TravelPackage changeStatus(Long id, PackageStatus newStatus) {
+    public TravelPackage changeStatus(Long adminUserId, Long id, PackageStatus newStatus) {
+        accessControlService.requireAdmin(adminUserId);
+
         TravelPackage travelPackage = getPackageById(id);
         travelPackage.setStatus(newStatus);
         return packageRepository.save(travelPackage);
     }
+
 }

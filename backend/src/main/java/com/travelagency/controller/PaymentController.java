@@ -1,6 +1,8 @@
 package com.travelagency.controller;
 
 import com.travelagency.dto.request.PaymentRequest;
+import com.travelagency.dto.response.PaymentResponse;
+import com.travelagency.dto.response.PaymentSummaryResponse;
 import com.travelagency.entity.Payment;
 import com.travelagency.service.PaymentService;
 import jakarta.validation.Valid;
@@ -25,22 +27,39 @@ public class PaymentController {
     private final PaymentService paymentService;
 
     /**
+     * RESUMEN de la reserva ANTES de pagar (Regla 11).
+     * URL: GET /api/payments/summary/5?userId=1
+     * Acceso: el dueño de la reserva, o un ADMIN
+     */
+    @GetMapping("/summary/{bookingId}")
+    public ResponseEntity<PaymentSummaryResponse> getPaymentSummary(
+            @PathVariable Long bookingId,
+            @RequestParam Long userId) {
+        return ResponseEntity.ok(paymentService.getPaymentSummary(bookingId, userId));
+    }
+
+    /**
      * PROCESAR un pago
-     * URL: POST /api/payments
+     * URL: POST /api/payments?userId=1
+     * Acceso: el dueño de la reserva, o un ADMIN
      */
     @PostMapping
-    public ResponseEntity<Payment> processPayment(
+    public ResponseEntity<PaymentResponse> processPayment(
+            @RequestParam Long userId,
             @Valid @RequestBody PaymentRequest request) {
-        Payment payment = paymentService.processPayment(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(payment);
+        Payment payment = paymentService.processPayment(userId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(PaymentResponse.from(payment));
     }
 
     /**
      * OBTENER pago de una reserva
-     * URL: GET /api/payments/booking/5
+     * URL: GET /api/payments/booking/5?userId=1
+     * Acceso: el dueño de la reserva, o un ADMIN
      */
     @GetMapping("/booking/{bookingId}")
-    public ResponseEntity<Payment> getPaymentByBooking(@PathVariable Long bookingId) {
-        return ResponseEntity.ok(paymentService.getPaymentByBookingId(bookingId));
+    public ResponseEntity<PaymentResponse> getPaymentByBooking(
+            @PathVariable Long bookingId,
+            @RequestParam Long userId) {
+        return ResponseEntity.ok(PaymentResponse.from(paymentService.getPaymentByBookingId(bookingId, userId)));
     }
 }

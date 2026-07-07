@@ -61,6 +61,14 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Jackson Hibernate6: permite convertir a JSON entidades con
+             relaciones LAZY (@ManyToOne) sin que Jackson falle al toparse
+             con un proxy de Hibernate todavía no inicializado. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-hibernate6</artifactId>
+        </dependency>
+
         <!-- Lombok: reduce código repetitivo (getters, setters, constructores) -->
         <dependency>
             <groupId>org.projectlombok</groupId>

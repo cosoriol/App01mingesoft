@@ -81,6 +81,22 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     List<Booking> findByStatusNot(BookingStatus status);
 
     /**
+     * Reservas creadas dentro de un rango de fechas, SIN filtrar por
+     * estado. Épica 7: reporte detallado de ventas, cuando el admin
+     * pide includeCancelled=true.
+     */
+    List<Booking> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+
+    /**
+     * Reservas creadas dentro de un rango de fechas, excluyendo los
+     * estados indicados. Épica 7: comportamiento por defecto del
+     * reporte de ventas (excluye CANCELLED y EXPIRED) y base del
+     * ranking de paquetes vendidos (que siempre las excluye).
+     */
+    List<Booking> findByCreatedAtBetweenAndStatusNotIn(
+            LocalDateTime start, LocalDateTime end, List<BookingStatus> excludedStatuses);
+
+    /**
      * Ranking de paquetes por cantidad de reservas (excluye CANCELLED).
      *
      * Épica 7: reporte de "paquetes más reservados". Usa una consulta

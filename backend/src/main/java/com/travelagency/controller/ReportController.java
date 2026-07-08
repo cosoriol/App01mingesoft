@@ -68,4 +68,32 @@ public class ReportController {
     public ResponseEntity<DiscountEffectivenessResponse> getDiscountEffectiveness(@RequestParam Long userId) {
         return ResponseEntity.ok(reportService.getDiscountEffectiveness(userId));
     }
+
+    /**
+     * LISTADO DETALLADO DE VENTAS por período (fila por fila).
+     * URL: GET /api/reports/sales/listing?startDate=2026-01-01&endDate=2026-06-30&includeCancelled=false&userId=3
+     *
+     * Distinto de /sales (reporte agregado): este devuelve cada
+     * reserva individual del período, con su propio resumen de totales.
+     */
+    @GetMapping("/sales/listing")
+    public ResponseEntity<SalesListingResponse> getSalesListing(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(defaultValue = "false") boolean includeCancelled,
+            @RequestParam Long userId) {
+        return ResponseEntity.ok(reportService.generateSalesReport(userId, startDate, endDate, includeCancelled));
+    }
+
+    /**
+     * RANKING DE PAQUETES VENDIDOS por período.
+     * URL: GET /api/reports/ranking?startDate=2026-01-01&endDate=2026-06-30&userId=3
+     */
+    @GetMapping("/ranking")
+    public ResponseEntity<PackageRankingResponse> getPackageRanking(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam Long userId) {
+        return ResponseEntity.ok(reportService.generatePackageRanking(userId, startDate, endDate));
+    }
 }

@@ -1,5 +1,6 @@
 package com.travelagency.controller;
 
+import com.travelagency.dto.request.ChangePasswordRequest;
 import com.travelagency.dto.request.UpdateProfileRequest;
 import com.travelagency.entity.User;
 import com.travelagency.service.UserService;
@@ -71,5 +72,40 @@ public class UserController {
             @RequestParam Long userId,
             @Valid @RequestBody UpdateProfileRequest request) {
         return ResponseEntity.ok(userService.updateProfile(userId, id, request));
+    }
+
+    /**
+     * CAMBIAR LA CONTRASEÑA de una cuenta.
+     * URL: PUT /api/users/5/password?userId=5
+     * Acceso: el propio dueño de la cuenta (requiere conocer la
+     * contraseña actual), o un ADMIN.
+     */
+    @PutMapping("/{id}/password")
+    public ResponseEntity<Void> changePassword(
+            @PathVariable Long id,
+            @RequestParam Long userId,
+            @Valid @RequestBody ChangePasswordRequest request) {
+        userService.changePassword(userId, id, request);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * DESACTIVAR la propia cuenta (o la de otro usuario, si eres ADMIN).
+     * URL: PATCH /api/users/5/deactivate?userId=5
+     * Acceso: el propio dueño de la cuenta, o un ADMIN
+     */
+    @PatchMapping("/{id}/deactivate")
+    public ResponseEntity<User> deactivateAccount(@PathVariable Long id, @RequestParam Long userId) {
+        return ResponseEntity.ok(userService.deactivateAccount(userId, id));
+    }
+
+    /**
+     * REACTIVAR una cuenta previamente desactivada.
+     * URL: PATCH /api/users/5/reactivate?userId=3
+     * Acceso: solo ADMIN
+     */
+    @PatchMapping("/{id}/reactivate")
+    public ResponseEntity<User> reactivateAccount(@PathVariable Long id, @RequestParam Long userId) {
+        return ResponseEntity.ok(userService.reactivateAccount(userId, id));
     }
 }

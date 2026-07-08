@@ -3,6 +3,7 @@ package com.travelagency.repository;
 import com.travelagency.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -41,4 +42,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * Retorna true o false.
      */
     boolean existsByEmail(String email);
+
+    /**
+     * Busca todos los usuarios con un rol determinado (CLIENT o ADMIN).
+     */
+    List<User> findByRole(String role);
+
+    /**
+     * Busca todos los usuarios activos o inactivos.
+     */
+    List<User> findByActive(boolean active);
 }

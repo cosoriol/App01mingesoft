@@ -22,12 +22,12 @@ function Login({ onLogin }) {
     setLoading(true);
     try {
       const response = await login(email, password);
-      const user = response.data;
+      const user = response.data.user;
       localStorage.setItem('currentUser', JSON.stringify(user));
       onLogin(user);
       navigate('/');
     } catch (err) {
-      setError('Email o contraseña incorrectos');
+      setError(err.response?.data?.error || 'Email o contraseña incorrectos');
     } finally {
       setLoading(false);
     }

@@ -97,6 +97,24 @@ public class User {
     private Boolean active = true;
 
     /**
+     * Intentos de login fallidos consecutivos. Se resetea a 0 en
+     * cada login exitoso. Al alcanzar el máximo configurado
+     * (app.security.max-failed-attempts), la cuenta se bloquea
+     * temporalmente (ver lockUntil).
+     */
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer failedLoginAttempts = 0;
+
+    /**
+     * Fecha/hora hasta la cual la cuenta queda bloqueada por exceso
+     * de intentos fallidos. Null = no está bloqueada. nullable a
+     * nivel de columna a propósito: la mayoría de las cuentas nunca
+     * llegan a bloquearse.
+     */
+    private LocalDateTime lockUntil;
+
+    /**
      * Fecha y hora en que se creó la cuenta.
      */
     @Column(nullable = false, updatable = false)

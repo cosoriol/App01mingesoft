@@ -112,6 +112,15 @@ export const getUserBookings = (userId, status) =>
 export const cancelBooking = (bookingId, userId) =>
   api.patch(`/bookings/${bookingId}/cancel`, null, { params: { userId } });
 
+/**
+ * Obtener el detalle de una reserva por ID. userId identifica a
+ * quien pregunta, para que el backend valide que sea el dueño de la
+ * reserva (o un ADMIN).
+ * Llama a: GET /api/bookings/5?userId=1
+ */
+export const getBookingById = (bookingId, userId) =>
+  api.get(`/bookings/${bookingId}`, { params: { userId } });
+
 // ============================================================
 // FUNCIONES PARA PAGOS (Épica 5)
 // ============================================================
@@ -122,6 +131,22 @@ export const cancelBooking = (bookingId, userId) =>
  */
 export const processPayment = (userId, paymentData) =>
   api.post('/payments', paymentData, { params: { userId } });
+
+/**
+ * Resumen de la reserva ANTES de pagar (precio, descuentos, total).
+ * userId identifica a quien pregunta (dueño de la reserva, o ADMIN).
+ * Llama a: GET /api/payments/summary/5?userId=1
+ */
+export const getPaymentSummary = (bookingId, userId) =>
+  api.get(`/payments/summary/${bookingId}`, { params: { userId } });
+
+/**
+ * Obtener el pago ya realizado de una reserva (para el comprobante).
+ * userId identifica a quien pregunta (dueño de la reserva, o ADMIN).
+ * Llama a: GET /api/payments/booking/5?userId=1
+ */
+export const getPaymentByBooking = (bookingId, userId) =>
+  api.get(`/payments/booking/${bookingId}`, { params: { userId } });
 
 // ============================================================
 // FUNCIONES PARA REPORTES (Épica 7)

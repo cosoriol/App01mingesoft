@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { getUserBookings, cancelBooking } from '../services/api';
 
 /**
@@ -17,6 +17,7 @@ const STATUS_LABELS = {
 };
 
 function MyBookings({ currentUser }) {
+  const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -40,6 +41,9 @@ function MyBookings({ currentUser }) {
   };
 
   const handleCancel = async (bookingId) => {
+    if (!window.confirm('¿Seguro que quieres cancelar esta reserva?')) {
+      return;
+    }
     setError('');
     try {
       await cancelBooking(bookingId, currentUser.id);
@@ -118,11 +122,29 @@ function MyBookings({ currentUser }) {
                   </p>
                 )}
 
-                {canCancel && (
-                  <button className="btn-logout" onClick={() => handleCancel(booking.id)}>
-                    Cancelar reserva
-                  </button>
-                )}
+                <div className="booking-card-actions">
+                  {booking.status === 'PENDING' && (
+                    <button
+                      className="btn-primary"
+                      onClick={() => navigate(`/payment/${booking.id}`)}
+                    >
+                      Pagar ahora
+                    </button>
+                  )}
+                  {booking.status === 'CONFIRMED' && (
+                    <button
+                      className="btn-secondary"
+                      onClick={() => navigate(`/payment-confirmation/${booking.id}`)}
+                    >
+                      Ver comprobante
+                    </button>
+                  )}
+                  {canCancel && (
+                    <button className="btn-danger" onClick={() => handleCancel(booking.id)}>
+                      Cancelar reserva
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}

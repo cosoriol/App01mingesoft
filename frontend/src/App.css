@@ -406,3 +406,267 @@ body {
   padding: 1rem;
   font-size: 0.85rem;
 }
+
+/* ============================================================
+   FLUJO DE COMPRA: reserva → pago → confirmación (Épicas 4 y 5)
+   ============================================================ */
+
+/* --- Botones primario/secundario/peligro --- */
+.btn-primary,
+.btn-secondary,
+.btn-danger {
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.btn-primary {
+  background: #1a73e8;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #1557b0;
+}
+
+.btn-secondary {
+  background: #eceff1;
+  color: #333;
+}
+
+.btn-secondary:hover {
+  background: #dde2e6;
+}
+
+.btn-danger {
+  background: #c62828;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #b71c1c;
+}
+
+.btn-primary:disabled,
+.btn-secondary:disabled,
+.btn-danger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-large {
+  padding: 0.85rem 2rem;
+  font-size: 1rem;
+  width: 100%;
+}
+
+/* --- Tarjetas de resumen (paquete, reserva, confirmación) --- */
+.summary-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+/* --- Desglose de precio en vivo (BookingPage) --- */
+.price-breakdown {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eee;
+}
+
+.price-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.price-note {
+  font-size: 0.8rem;
+  color: #888;
+  font-style: italic;
+  margin-top: 0.25rem;
+}
+
+/* --- Resumen de pago con separadores (PaymentPage) --- */
+.payment-summary {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eee;
+}
+
+.payment-summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.35rem 0;
+  font-size: 0.95rem;
+}
+
+.payment-summary-discount {
+  color: #c62828;
+}
+
+.payment-summary-divider {
+  border-top: 1px dashed #ccc;
+  margin: 0.75rem 0;
+}
+
+.payment-summary-total {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #2e7d32;
+}
+
+/* --- Formulario de tarjeta de crédito simulada --- */
+.credit-card-form {
+  background: linear-gradient(135deg, #1a237e, #6a1b9a);
+  border-radius: 16px;
+  padding: 2rem;
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+
+.credit-card-icons {
+  color: white;
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  margin-bottom: 0.5rem;
+}
+
+.credit-card-form .filter-group label {
+  color: rgba(255,255,255,0.85);
+}
+
+.credit-card-form .filter-group input {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 8px;
+  color: white;
+  padding: 0.65rem 0.9rem;
+}
+
+.credit-card-form .filter-group input::placeholder {
+  color: rgba(255,255,255,0.5);
+}
+
+.credit-card-form .filter-group input:focus {
+  outline: none;
+  border-color: rgba(255,255,255,0.7);
+  background: rgba(255,255,255,0.22);
+}
+
+.card-number-input {
+  font-family: 'Courier New', monospace;
+  font-size: 1.1rem;
+  letter-spacing: 2px;
+}
+
+.btn-pay {
+  background: #2e7d32;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 1rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 0.5rem;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.btn-pay:hover {
+  background: #256428;
+}
+
+.btn-pay:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* --- Página de confirmación (PaymentConfirmation) --- */
+.confirmation-page {
+  max-width: 650px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.confirmation-icon {
+  font-size: 4rem;
+  margin-bottom: 0.5rem;
+}
+
+.confirmation-summary {
+  text-align: left;
+}
+
+.confirmation-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+.confirmation-actions button {
+  flex: 1;
+  max-width: 220px;
+}
+
+/* --- Acciones dentro de una tarjeta de reserva (MyBookings) --- */
+.booking-card-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+/* --- Estado de carga (spinner) --- */
+.spinner {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid rgba(0,0,0,0.15);
+  border-top-color: #1a73e8;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin-right: 0.5rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* --- Responsivo: apilar en pantallas angostas --- */
+@media (max-width: 600px) {
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .confirmation-actions {
+    flex-direction: column;
+  }
+
+  .confirmation-actions button {
+    max-width: none;
+  }
+
+  .credit-card-form {
+    padding: 1.25rem;
+  }
+}

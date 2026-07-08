@@ -7,6 +7,9 @@ import MyBookings from './pages/MyBookings';
 import Reports from './pages/Reports';
 import AdminPackages from './pages/AdminPackages';
 import Profile from './pages/Profile';
+import BookingPage from './pages/BookingPage';
+import PaymentPage from './pages/PaymentPage';
+import PaymentConfirmation from './pages/PaymentConfirmation';
 import './App.css';
 
 /**
@@ -68,6 +71,12 @@ function App() {
             <Route path="/" element={<PackageList />} />
             {/* URL "/packages/5" muestra el detalle del paquete 5 */}
             <Route path="/packages/:id" element={<PackageDetail currentUser={currentUser} />} />
+            {/* URL "/booking/5" elige pasajeros y crea la reserva del paquete 5 (Épica 4) */}
+            <Route path="/booking/:packageId" element={<BookingPage currentUser={currentUser} />} />
+            {/* URL "/payment/12" paga la reserva 12 (Épica 5) */}
+            <Route path="/payment/:bookingId" element={<PaymentPage currentUser={currentUser} />} />
+            {/* URL "/payment-confirmation/12" muestra el comprobante de la reserva 12 (Épica 5) */}
+            <Route path="/payment-confirmation/:bookingId" element={<PaymentConfirmation currentUser={currentUser} />} />
             {/* URL "/login" muestra el formulario de inicio de sesión */}
             <Route path="/login" element={<Login onLogin={setCurrentUser} />} />
             {/* URL "/my-bookings" muestra el seguimiento de reservas (Épica 6) */}

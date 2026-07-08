@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getPackageById, createBooking } from '../services/api';
+import { getPackageById } from '../services/api';
 
 /**
  * PÁGINA: Detalle de un Paquete Turístico (Épica 3)
@@ -9,15 +9,16 @@ import { getPackageById, createBooking } from '../services/api';
  * El usuario llega aquí al hacer clic en una tarjeta de paquete.
  *
  * useParams = obtiene el ID de la URL (Ej: /packages/5 → id = 5)
+ *
+ * El botón "Reservar ahora" navega a /booking/:id (Épica 4), que es
+ * donde se elige la cantidad de pasajeros y se crea la reserva; esta
+ * página es solo informativa.
  */
 function PackageDetail({ currentUser }) {
   const { id } = useParams(); // Obtener ID de la URL
   const navigate = useNavigate();
   const [pkg, setPkg] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [passengerCount, setPassengerCount] = useState(1);
-  const [bookingError, setBookingError] = useState('');
-  const [bookingLoading, setBookingLoading] = useState(false);
 
   useEffect(() => {
     const loadPackage = async () => {
@@ -34,27 +35,15 @@ function PackageDetail({ currentUser }) {
   }, [id]);
 
   /**
-   * RESERVAR el paquete actual (Épica 4, conectado desde Épica 6).
-   * Si no hay sesión activa, se manda al login primero.
+   * Ir al paso de reserva (Épica 4). Si no hay sesión activa, se
+   * manda al login primero.
    */
-  const handleBooking = async () => {
+  const handleReserveClick = () => {
     if (!currentUser) {
       navigate('/login');
       return;
     }
-    setBookingError('');
-    setBookingLoading(true);
-    try {
-      await createBooking(currentUser.id, {
-        packageId: pkg.id,
-        passengerCount: Number(passengerCount),
-      });
-      navigate('/my-bookings');
-    } catch (error) {
-      setBookingError(error.response?.data?.error || 'No se pudo crear la reserva');
-    } finally {
-      setBookingLoading(false);
-    }
+    navigate(`/booking/${pkg.id}`);
   };
 
   if (loading) return <p>Cargando detalle del paquete...</p>;
@@ -108,28 +97,10 @@ function PackageDetail({ currentUser }) {
           </>
         )}
 
-        {bookingError && <p className="login-error">{bookingError}</p>}
-
         {pkg.status === 'AVAILABLE' && pkg.availableSlots > 0 ? (
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', marginTop: '1rem' }}>
-            <div className="filter-group">
-              <label>Pasajeros</label>
-              <input
-                type="number"
-                min="1"
-                max={pkg.availableSlots}
-                value={passengerCount}
-                onChange={(e) => setPassengerCount(e.target.value)}
-              />
-            </div>
-            <button
-              className="btn-search"
-              onClick={handleBooking}
-              disabled={bookingLoading}
-            >
-              {bookingLoading ? 'Reservando...' : '🛒 Reservar ahora'}
-            </button>
-          </div>
+          <button className="btn-primary btn-large" onClick={handleReserveClick} style={{ marginTop: '1rem' }}>
+            🛒 Reservar ahora
+          </button>
         ) : (
           <p style={{ marginTop: '1rem', color: '#c62828' }}>
             Este paquete no tiene cupos disponibles.

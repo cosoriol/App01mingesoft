@@ -33,9 +33,11 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
       APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS}
     # Puertos expuestos solo para testing/debug directo de cada replica;
-    # en produccion real el trafico deberia entrar unicamente por nginx-balancer
+    # en produccion real el trafico deberia entrar unicamente por nginx-balancer.
+    # Rango 8001-8003 (no 8081-8083) para coexistir sin choques con otros
+    # proyectos locales que ya usen ese rango (ver README-COEXISTENCIA.md).
     ports:
-      - "8081:8080"
+      - "8001:8080"
     depends_on:
       mysql:
         condition: service_healthy
@@ -58,7 +60,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
       APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS}
     ports:
-      - "8082:8080"
+      - "8002:8080"
     depends_on:
       mysql:
         condition: service_healthy
@@ -81,7 +83,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
       APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS}
     ports:
-      - "8083:8080"
+      - "8003:8080"
     depends_on:
       mysql:
         condition: service_healthy

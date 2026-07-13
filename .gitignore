@@ -1,0 +1,24 @@
+# Docker
+.env
+docker-compose.override.yml
+
+# Backend
+backend/target/
+backend/.classpath
+backend/.project
+backend/.settings/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db

@@ -9,9 +9,14 @@ import axios from 'axios';
  * baseURL apunta al backend (puerto 8080).
  */
 
-// Crear instancia de axios con configuración base
+// baseURL relativo: las peticiones van al mismo origen que sirvio la SPA
+// (nginx del frontend o el balanceador), que las reenvia al backend.
+// Usar una URL absoluta tipo "http://localhost:8080" rompe produccion: el
+// navegador del usuario final la ejecutaria literal contra su propia maquina.
+// En "npm start" (desarrollo), el campo "proxy" de package.json reenvia estas
+// mismas rutas relativas hacia el backend local.
 const api = axios.create({
-  baseURL: 'http://localhost:8080/api',  // URL del backend
+  baseURL: '/api',
   headers: {
     'Content-Type': 'application/json',
   },

@@ -32,6 +32,20 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+        <!-- Spring Boot Actuator: expone /actuator/health para health checks
+             (Docker HEALTHCHECK, docker-compose depends_on condition, balanceador) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- Logging (Logback + SLF4J): ya viene transitivamente con los demas
+             starters, se declara explicito para dejar la dependencia a la vista -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-logging</artifactId>
+        </dependency>
+
         <!-- Spring Data JPA: para conectar con la base de datos sin escribir SQL -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

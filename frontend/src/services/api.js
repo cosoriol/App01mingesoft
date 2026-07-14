@@ -110,6 +110,12 @@ export const getUserBookings = (userId, status) =>
   api.get(`/bookings/user/${userId}`, { params: { requesterId: userId, ...(status ? { status } : {}) } });
 
 /**
+ * Obtener TODAS las reservas (de cualquier cliente). Solo ADMIN.
+ * Llama a: GET /api/bookings?userId=3
+ */
+export const getAllBookings = (userId) => api.get('/bookings', { params: { userId } });
+
+/**
  * Cancelar una reserva. userId identifica a quien cancela, para que
  * el backend valide que sea el dueño de la reserva (o un ADMIN).
  * Llama a: PATCH /api/bookings/5/cancel?userId=1

@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import MyBookings from './pages/MyBookings';
 import Reports from './pages/Reports';
 import AdminPackages from './pages/AdminPackages';
+import AdminBookings from './pages/AdminBookings';
 import Profile from './pages/Profile';
 import BookingPage from './pages/BookingPage';
 import PaymentPage from './pages/PaymentPage';
@@ -49,6 +50,7 @@ function App() {
             <Link to="/">Paquetes</Link>
             <Link to="/my-bookings">Mis Reservas</Link>
             {currentUser?.role === 'ADMIN' && <Link to="/admin/packages">Paquetes (Admin)</Link>}
+            {currentUser?.role === 'ADMIN' && <Link to="/admin/bookings">Reservas (Admin)</Link>}
             {currentUser?.role === 'ADMIN' && <Link to="/reports">Reportes</Link>}
             {currentUser && <Link to="/profile">Mi Perfil</Link>}
             {currentUser ? (
@@ -85,6 +87,8 @@ function App() {
             <Route path="/reports" element={<Reports currentUser={currentUser} />} />
             {/* URL "/admin/packages" administra paquetes turísticos (Épica 2) */}
             <Route path="/admin/packages" element={<AdminPackages currentUser={currentUser} />} />
+            {/* URL "/admin/bookings" administra las reservas de todos los clientes (Épica 6) */}
+            <Route path="/admin/bookings" element={<AdminBookings currentUser={currentUser} />} />
             {/* URL "/profile" edita el perfil del usuario logueado (Épica 1) */}
             <Route path="/profile" element={<Profile currentUser={currentUser} onProfileUpdated={setCurrentUser} />} />
           </Routes>

@@ -30,6 +30,8 @@ import java.util.List;
 public class BookingResponse {
 
     private Long id;
+    private String userFullName;
+    private String userEmail;
     private String packageName;
     private String destination;
     private Integer passengerCount;
@@ -56,6 +58,8 @@ public class BookingResponse {
     public static BookingResponse from(Booking booking) {
         BookingResponse response = new BookingResponse();
         response.setId(booking.getId());
+        response.setUserFullName(booking.getUser().getFullName());
+        response.setUserEmail(booking.getUser().getEmail());
         response.setPackageName(booking.getTravelPackage().getName());
         response.setDestination(booking.getTravelPackage().getDestination());
         response.setPassengerCount(booking.getPassengerCount());

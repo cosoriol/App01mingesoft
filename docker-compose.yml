@@ -23,7 +23,10 @@ services:
       retries: 10
       start_period: 30s
 
-  # Backend - replica 1
+  # Backend - replica unica: el droplet de produccion actual tiene ~1GB RAM,
+  # insuficiente para 3 replicas de Spring Boot + MySQL + nginx a la vez.
+  # Para volver a 3 replicas (backend1/2/3), restaurar este bloque y el
+  # upstream de nginx-balancer.conf, en un droplet de 2GB+.
   backend1:
     image: cosoriol/travel-agency-backend:latest
     restart: always
@@ -32,58 +35,12 @@ services:
       SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
       APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS}
-    # Puertos expuestos solo para testing/debug directo de cada replica;
+    # Puerto expuesto solo para testing/debug directo del backend;
     # en produccion real el trafico deberia entrar unicamente por nginx-balancer.
-    # Rango 8001-8003 (no 8081-8083) para coexistir sin choques con otros
+    # Puerto 8001 (no 8081) para coexistir sin choques con otros
     # proyectos locales que ya usen ese rango (ver README-COEXISTENCIA.md).
     ports:
       - "8001:8080"
-    depends_on:
-      mysql:
-        condition: service_healthy
-    networks:
-      - travel-network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  # Backend - replica 2
-  backend2:
-    image: cosoriol/travel-agency-backend:latest
-    restart: always
-    environment:
-      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
-      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
-      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
-      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS}
-    ports:
-      - "8002:8080"
-    depends_on:
-      mysql:
-        condition: service_healthy
-    networks:
-      - travel-network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  # Backend - replica 3
-  backend3:
-    image: cosoriol/travel-agency-backend:latest
-    restart: always
-    environment:
-      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
-      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
-      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
-      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS}
-    ports:
-      - "8003:8080"
     depends_on:
       mysql:
         condition: service_healthy
@@ -111,11 +68,11 @@ services:
       retries: 3
       start_period: 15s
 
-  # Nginx como balanceador de carga: unico punto de entrada publico (puerto 80).
-  # Reparte /api/ entre las 3 replicas del backend y reenvia todo lo demas al
-  # frontend (ver nginx-balancer.conf). No depende de "frontend" en depends_on
-  # porque frontend no necesita esperar al balanceador para arrancar y crear
-  # esa dependencia en el otro sentido formaria un ciclo.
+  # Nginx como punto de entrada publico (puerto 80). Reenvia /api/ al backend
+  # y todo lo demas al frontend (ver nginx-balancer.conf). No depende de
+  # "frontend" en depends_on porque frontend no necesita esperar al
+  # balanceador para arrancar y crear esa dependencia en el otro sentido
+  # formaria un ciclo.
   nginx-balancer:
     image: nginx:alpine
     restart: always
@@ -125,10 +82,6 @@ services:
       - ./nginx-balancer.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       backend1:
-        condition: service_healthy
-      backend2:
-        condition: service_healthy
-      backend3:
         condition: service_healthy
       frontend:
         condition: service_healthy

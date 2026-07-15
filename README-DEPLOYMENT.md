@@ -13,16 +13,21 @@
                /api/  |      | resto (/)
                  v     |      v
    +-------------------+   +----------+
-   | backend1/2/3:8080 |   | frontend |
-   | (least_conn)       |   +----------+
-   +-------------------+
+   |   backend1:8080    |   | frontend |
+   +-------------------+   +----------+
              |
              v
           mysql:3306
 ```
 
-- `nginx-balancer` (puerto 80) reparte `/api/**` entre las 3 réplicas del
-  backend y reenvía todo lo demás al contenedor `frontend`, que sirve la SPA.
+- `nginx-balancer` (puerto 80) reenvía `/api/**` al backend (`backend1`) y
+  todo lo demás al contenedor `frontend`, que sirve la SPA.
+- Arquitectura reducida a **1 réplica de backend**: el droplet de producción
+  actual tiene ~1GB de RAM, insuficiente para correr MySQL + 3 réplicas de
+  Spring Boot + nginx a la vez. Para volver a 3 réplicas balanceadas
+  (`backend1/2/3` con `least_conn`), hace falta un droplet de 2GB+ RAM —
+  restaurar el bloque comentado en `docker-compose.yml` y el upstream en
+  `nginx-balancer.conf`.
 - El frontend también tiene su propio nginx con un `location /api/` que
   reenvía a `nginx-balancer` — sirve si alguien accede directo al puerto
   `3000` en vez del `80`. En ambos casos las llamadas del navegador son
@@ -54,9 +59,10 @@ docker push cosoriol/travel-agency-frontend:latest
 
 ## Paso 2: Crear servidor en DigitalOcean
 
-- Ubuntu 22.04 LTS
-- Tamaño: $12/mes mínimo (2 vCPU / 2GB RAM recomendado para correr 3 réplicas
-  del backend + MySQL + nginx)
+- Ubuntu 22.04 LTS (el droplet actual de producción es 24.04 LTS)
+- Tamaño: con 1 réplica de backend (configuración actual) alcanza el droplet
+  de $6/mes (1GB RAM), aunque queda justo. Para volver a 3 réplicas
+  balanceadas hace falta 2GB+ RAM ($12/mes o más).
 - Copiar la IP pública
 
 ## Paso 3: Desplegar en el servidor
@@ -124,7 +130,9 @@ Requiere configurar en Jenkins (Manage Jenkins → Credentials):
 - `docker-hub-credentials` — Username with password (cuenta con permiso de
   push sobre `cosoriol/*`).
 - `digitalocean-ssh` — SSH Username with private key (usuario `root`, clave
-  privada del droplet; en local esa clave vive en `~/.ssh/digitalocean_rsa`).
+  privada `~/.ssh/id_ed25519`; esta clave ya está autorizada en el droplet
+  y tiene passphrase, así que hay que completar también el campo
+  "Passphrase" del credential en Jenkins, no solo pegar la clave).
 - `do-server-ip` — Secret text con la IP pública del droplet.
 
 Y en el droplet, `/root/travelagency/` debe existir con un `.env` ya

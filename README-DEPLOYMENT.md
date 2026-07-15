@@ -112,3 +112,25 @@ docker-compose restart backend1   # Reiniciar un servicio
 docker-compose down               # Detener todo (conserva el volumen de MySQL)
 docker-compose down -v            # Detener todo y borrar los datos de MySQL
 ```
+
+## Despliegue automatizado con Jenkins (opcional)
+
+El `Jenkinsfile` en la raíz del repo automatiza los pasos 1 y 3 de arriba
+(build + push de imágenes, y despliegue por SSH) cada vez que se pushea a
+`main`.
+
+Requiere configurar en Jenkins (Manage Jenkins → Credentials):
+
+- `docker-hub-credentials` — Username with password (cuenta con permiso de
+  push sobre `cosoriol/*`).
+- `digitalocean-ssh` — SSH Username with private key (usuario `root`, clave
+  privada del droplet; en local esa clave vive en `~/.ssh/digitalocean_rsa`).
+- `do-server-ip` — Secret text con la IP pública del droplet.
+
+Y en el droplet, `/root/travelagency/` debe existir con un `.env` ya
+configurado (el pipeline nunca toca `.env`: solo sincroniza
+`docker-compose.yml` y `nginx-balancer.conf`, hace `docker pull` de las
+imágenes `:latest` y `docker-compose up -d`).
+
+Para disparo automático por push, agregar un webhook en GitHub
+(`Settings → Webhooks`) apuntando a `http://{jenkins-host}:8080/github-webhook/`.

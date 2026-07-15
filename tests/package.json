@@ -1,0 +1,15 @@
+{
+  "name": "app01mingesoft-e2e-tests",
+  "version": "1.0.0",
+  "description": "Pruebas funcionales E2E (Playwright) - Evaluacion 3: criterios de aceptacion Epica 4 y Epica 5",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "report": "playwright show-report report"
+  },
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.61.1"
+  }
+}

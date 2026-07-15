@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login } from '../services/api';
+import { login, getErrorMessage } from '../services/api';
 
 /**
  * PÁGINA: Iniciar Sesión (Épica 1)
@@ -27,7 +27,7 @@ function Login({ onLogin }) {
       onLogin(user);
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.error || 'Email o contraseña incorrectos');
+      setError(getErrorMessage(err, 'Email o contraseña incorrectos'));
     } finally {
       setLoading(false);
     }

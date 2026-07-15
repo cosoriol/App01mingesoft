@@ -4,6 +4,7 @@ import {
   getMostBookedPackages,
   getBookingsSummary,
   getDiscountEffectiveness,
+  getErrorMessage,
 } from '../services/api';
 
 /**
@@ -77,7 +78,7 @@ function Reports({ currentUser }) {
       setSummary(summaryRes.data);
       setDiscounts(discountsRes.data);
     } catch (err) {
-      setError(err.response?.data?.error || 'No se pudieron cargar los reportes');
+      setError(getErrorMessage(err, 'No se pudieron cargar los reportes'));
     } finally {
       setLoading(false);
     }

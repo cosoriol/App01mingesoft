@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getPaymentByBooking } from '../services/api';
+import { getPaymentByBooking, getErrorMessage } from '../services/api';
 
 /**
  * PÁGINA: Confirmación de Pago (Épica 5)
@@ -25,7 +25,7 @@ function PaymentConfirmation({ currentUser }) {
         const response = await getPaymentByBooking(bookingId, currentUser.id);
         setPayment(response.data);
       } catch (err) {
-        setError(err.response?.data?.error || 'No se pudo cargar el comprobante de pago');
+        setError(getErrorMessage(err, 'No se pudo cargar el comprobante de pago'));
       } finally {
         setLoading(false);
       }

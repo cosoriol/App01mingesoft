@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getPackageById, createBooking } from '../services/api';
+import { getPackageById, createBooking, getErrorMessage } from '../services/api';
 
 /**
  * PÁGINA: Reservar un Paquete (Épica 4)
@@ -53,7 +53,7 @@ function BookingPage({ currentUser }) {
       });
       navigate(`/payment/${response.data.id}`);
     } catch (err) {
-      setError(err.response?.data?.error || 'No se pudo crear la reserva');
+      setError(getErrorMessage(err, 'No se pudo crear la reserva'));
     } finally {
       setSubmitting(false);
     }

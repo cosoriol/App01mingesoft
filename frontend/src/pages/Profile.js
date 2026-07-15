@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { updateProfile } from '../services/api';
+import { updateProfile, getErrorMessage } from '../services/api';
 
 /**
  * PÁGINA: Mi Perfil (Épica 1)
@@ -67,7 +67,7 @@ function Profile({ currentUser, onProfileUpdated }) {
       onProfileUpdated(updatedUser);
       setSuccess(true);
     } catch (err) {
-      setError(err.response?.data?.error || 'No se pudo actualizar el perfil');
+      setError(getErrorMessage(err, 'No se pudo actualizar el perfil'));
     } finally {
       setSaving(false);
     }

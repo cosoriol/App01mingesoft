@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getPaymentSummary, processPayment } from '../services/api';
+import { getPaymentSummary, processPayment, getErrorMessage } from '../services/api';
 
 /**
  * PÁGINA: Pagar una Reserva (Épica 5)
@@ -51,7 +51,7 @@ function PaymentPage({ currentUser }) {
         const response = await getPaymentSummary(bookingId, currentUser.id);
         setSummary(response.data);
       } catch (err) {
-        setLoadError(err.response?.data?.error || 'No se pudo cargar el resumen de la reserva');
+        setLoadError(getErrorMessage(err, 'No se pudo cargar el resumen de la reserva'));
       } finally {
         setLoading(false);
       }
@@ -80,7 +80,7 @@ function PaymentPage({ currentUser }) {
       });
       navigate(`/payment-confirmation/${bookingId}`);
     } catch (err) {
-      setPaymentError(err.response?.data?.error || 'No se pudo procesar el pago');
+      setPaymentError(getErrorMessage(err, 'No se pudo procesar el pago'));
     } finally {
       setPaying(false);
     }

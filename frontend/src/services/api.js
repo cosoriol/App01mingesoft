@@ -22,6 +22,23 @@ const api = axios.create({
   },
 });
 
+/**
+ * Extrae un mensaje de error legible de una respuesta de axios.
+ * GlobalExceptionHandler responde de dos formas distintas segun el tipo de
+ * error: { error: "mensaje especifico" } para reglas de negocio, o
+ * { error: "Validation failed", details: { campo: "mensaje especifico" } }
+ * para validaciones de formato (@Pattern, @NotBlank, etc. del DTO). Sin esto,
+ * cualquier error de validacion (ej. CVV invalido) mostraba el "Validation
+ * failed" generico en vez del mensaje util.
+ */
+export function getErrorMessage(err, fallback = 'Ocurrió un error inesperado. Intenta nuevamente.') {
+  const data = err.response?.data;
+  if (data?.details && typeof data.details === 'object') {
+    return Object.values(data.details).join('. ');
+  }
+  return data?.error || fallback;
+}
+
 // ============================================================
 // FUNCIONES DE AUTENTICACIÓN (Épica 1)
 // ============================================================

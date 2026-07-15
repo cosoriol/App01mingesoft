@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getAllBookings, cancelBooking } from '../services/api';
+import { getAllBookings, cancelBooking, getErrorMessage } from '../services/api';
 
 /**
  * PÁGINA: Administración de Reservas (Épica 6)
@@ -46,7 +46,7 @@ function AdminBookings({ currentUser }) {
       await cancelBooking(bookingId, currentUser.id);
       loadBookings();
     } catch (err) {
-      setError(err.response?.data?.error || 'No se pudo cancelar la reserva');
+      setError(getErrorMessage(err, 'No se pudo cancelar la reserva'));
     }
   };
 

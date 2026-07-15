@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getUserBookings, cancelBooking } from '../services/api';
+import { getUserBookings, cancelBooking, getErrorMessage } from '../services/api';
 
 /**
  * PÁGINA: Mis Reservas (Épica 6)
@@ -49,7 +49,7 @@ function MyBookings({ currentUser }) {
       await cancelBooking(bookingId, currentUser.id);
       loadBookings(); // Refrescar la lista con el nuevo estado
     } catch (err) {
-      setError(err.response?.data?.error || 'No se pudo cancelar la reserva');
+      setError(getErrorMessage(err, 'No se pudo cancelar la reserva'));
     }
   };
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getAllPackages, createPackage, updatePackage, changePackageStatus } from '../services/api';
+import { getAllPackages, createPackage, updatePackage, changePackageStatus, getErrorMessage } from '../services/api';
 
 /**
  * PÁGINA: Administración de Paquetes (Épica 2)
@@ -107,7 +107,7 @@ function AdminPackages({ currentUser }) {
       setEditingId(null);
       loadPackages();
     } catch (err) {
-      setFormError(err.response?.data?.error || 'No se pudo guardar el paquete');
+      setFormError(getErrorMessage(err, 'No se pudo guardar el paquete'));
     } finally {
       setSaving(false);
     }
@@ -119,7 +119,7 @@ function AdminPackages({ currentUser }) {
       await changePackageStatus(pkg.id, newStatus, currentUser.id);
       loadPackages();
     } catch (err) {
-      setError(err.response?.data?.error || 'No se pudo cambiar el estado del paquete');
+      setError(getErrorMessage(err, 'No se pudo cambiar el estado del paquete'));
     }
   };
 

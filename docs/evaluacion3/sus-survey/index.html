@@ -1,0 +1,527 @@
+<title>Cuestionario de Usabilidad — TravelAgency</title>
+
+<style>
+  :root {
+    --bg: #f7f8fb;
+    --surface: #ffffff;
+    --surface-raised: #ffffff;
+    --text: #1a1f2e;
+    --text-muted: #5b6478;
+    --accent: #2545c7;
+    --accent-soft: #eef1fc;
+    --accent-ink: #17307a;
+    --border: #e2e5ee;
+    --success: #1c8a5d;
+    --success-soft: #e7f5ef;
+    --warning: #a15c07;
+    --warning-soft: #fbf1e2;
+    --radius: 14px;
+    --shadow: 0 1px 2px rgba(26, 31, 46, 0.04), 0 8px 24px -12px rgba(26, 31, 46, 0.12);
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #12141c;
+    --surface: #1a1d29;
+    --surface-raised: #20232f;
+    --text: #eef0f6;
+    --text-muted: #9aa1b4;
+    --accent: #7c93ff;
+    --accent-soft: #232a4d;
+    --accent-ink: #c3cdff;
+    --border: #2b2f40;
+    --success: #4ecf95;
+    --success-soft: #163429;
+    --warning: #e0a94a;
+    --warning-soft: #3a2c14;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 28px -12px rgba(0, 0, 0, 0.5);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12141c;
+      --surface: #1a1d29;
+      --surface-raised: #20232f;
+      --text: #eef0f6;
+      --text-muted: #9aa1b4;
+      --accent: #7c93ff;
+      --accent-soft: #232a4d;
+      --accent-ink: #c3cdff;
+      --border: #2b2f40;
+      --success: #4ecf95;
+      --success-soft: #163429;
+      --warning: #e0a94a;
+      --warning-soft: #3a2c14;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 28px -12px rgba(0, 0, 0, 0.5);
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 5rem;
+  }
+
+  header.page-head {
+    margin-bottom: 2.25rem;
+  }
+
+  .eyebrow {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.6rem;
+  }
+
+  h1 {
+    font-family: ui-serif, Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    font-size: clamp(1.7rem, 4vw, 2.15rem);
+    font-weight: 600;
+    margin: 0 0 0.6rem;
+    text-wrap: balance;
+    color: var(--text);
+  }
+
+  .lede {
+    color: var(--text-muted);
+    font-size: 0.98rem;
+    max-width: 60ch;
+    margin: 0;
+  }
+
+  .lede strong { color: var(--text); }
+
+  .progress-track {
+    display: flex;
+    gap: 5px;
+    margin: 1.75rem 0 0;
+  }
+
+  .progress-dot {
+    height: 4px;
+    flex: 1;
+    border-radius: 2px;
+    background: var(--border);
+    transition: background 0.2s ease;
+  }
+
+  .progress-dot.done { background: var(--accent); }
+
+  form { margin-top: 2rem; }
+
+  .field-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem 1.5rem 1.35rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow);
+  }
+
+  .field-card .qnum {
+    font-family: ui-serif, Georgia, serif;
+    font-size: 0.8rem;
+    color: var(--accent);
+    font-weight: 600;
+    margin: 0 0 0.35rem;
+  }
+
+  .field-card p.question {
+    margin: 0 0 1.1rem;
+    font-size: 1.02rem;
+    color: var(--text);
+    text-wrap: balance;
+  }
+
+  .scale {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.5rem;
+  }
+
+  .scale label {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 44px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--bg);
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+  }
+
+  .scale input {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    cursor: pointer;
+  }
+
+  .scale input:focus-visible ~ .tick,
+  .scale label:has(input:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .scale label:has(input:checked) {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent-ink);
+  }
+
+  .scale-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.55rem;
+    font-size: 0.74rem;
+    color: var(--text-muted);
+  }
+
+  .participant-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow);
+  }
+
+  .participant-card label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+    color: var(--text);
+  }
+
+  .participant-card input[type="text"] {
+    width: 100%;
+    padding: 0.65rem 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    font-size: 0.95rem;
+    background: var(--bg);
+    color: var(--text);
+    font-family: inherit;
+  }
+
+  .participant-card input[type="text"]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  .participant-card .hint {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top: 0.4rem;
+  }
+
+  button.submit {
+    width: 100%;
+    padding: 0.95rem 1.5rem;
+    border: none;
+    border-radius: 11px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    margin-top: 0.5rem;
+    transition: filter 0.15s ease, transform 0.1s ease;
+  }
+
+  button.submit:hover { filter: brightness(1.08); }
+  button.submit:active { transform: translateY(1px); }
+  button.submit:disabled { opacity: 0.45; cursor: not-allowed; }
+  button.submit:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .missing-note {
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--warning);
+    margin-top: 0.6rem;
+    min-height: 1.2em;
+  }
+
+  /* --- Resultado --- */
+  #result { display: none; }
+  #result.show { display: block; }
+  #form-section.hide { display: none; }
+
+  .result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    box-shadow: var(--shadow);
+    text-align: center;
+  }
+
+  .result-score {
+    font-family: ui-serif, Georgia, serif;
+    font-size: 4rem;
+    font-weight: 600;
+    line-height: 1;
+    margin: 0.5rem 0 0.2rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .result-score.good { color: var(--success); }
+  .result-score.warn { color: var(--warning); }
+
+  .result-scale-label {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+  }
+
+  .result-badge {
+    display: inline-block;
+    padding: 0.3rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 1.25rem;
+  }
+
+  .result-badge.good { background: var(--success-soft); color: var(--success); }
+  .result-badge.warn { background: var(--warning-soft); color: var(--warning); }
+
+  .result-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin-top: 1.5rem;
+    text-align: left;
+  }
+
+  .result-actions .copy-box {
+    background: var(--bg);
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .btn-row { display: flex; gap: 0.6rem; }
+
+  .btn-secondary {
+    flex: 1;
+    padding: 0.7rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+
+  .btn-secondary:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .btn-secondary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  footer.note {
+    margin-top: 2.5rem;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    text-align: center;
+  }
+</style>
+
+<div class="wrap">
+  <div id="form-section">
+    <header class="page-head">
+      <p class="eyebrow">Evaluación 3 · App01Mingesoft</p>
+      <h1>Cuestionario de usabilidad (SUS)</h1>
+      <p class="lede">
+        10 preguntas, menos de 3 minutos. Responde pensando en tu experiencia recién usando
+        <strong>TravelAgency</strong> (App01Mingesoft) — no hay respuestas correctas o incorrectas.
+      </p>
+      <div class="progress-track" id="progress-track"></div>
+    </header>
+
+    <form id="sus-form" novalidate>
+      <div class="participant-card">
+        <label for="participant-name">Tu nombre</label>
+        <input type="text" id="participant-name" name="participant-name" placeholder="Ej: María González" autocomplete="name" required />
+        <p class="hint">Se usa solo para identificar tu respuesta en la tabla de resultados.</p>
+      </div>
+
+      <div id="questions"></div>
+
+      <button type="submit" class="submit" id="submit-btn">Ver mi resultado</button>
+      <p class="missing-note" id="missing-note"></p>
+    </form>
+  </div>
+
+  <div id="result">
+    <div class="result-card">
+      <p class="eyebrow" id="result-name-label">Resultado de</p>
+      <span class="result-badge" id="result-badge"></span>
+      <div class="result-score" id="result-score">—</div>
+      <p class="result-scale-label">sobre 100 puntos (System Usability Scale)</p>
+
+      <div class="result-actions">
+        <div class="copy-box" id="copy-box"></div>
+        <div class="btn-row">
+          <button type="button" class="btn-secondary" id="copy-btn">Copiar resultado</button>
+          <a class="btn-secondary" id="mailto-btn" href="#">Enviar por email</a>
+        </div>
+      </div>
+    </div>
+    <footer class="note">Comparte este resultado con quien te envió la encuesta para que lo agregue a la tabla comparativa.</footer>
+  </div>
+</div>
+
+<script>
+  const QUESTIONS = [
+    "Creo que me gustaría usar este sistema frecuentemente.",
+    "El sistema es innecesariamente complejo.",
+    "El sistema es fácil de usar.",
+    "Creo que necesitaría ayuda técnica para usar este sistema.",
+    "Las funciones del sistema están bien integradas entre sí.",
+    "Siento que hay demasiada inconsistencia en este sistema.",
+    "Creo que la mayoría de la gente aprendería a usar este sistema muy rápidamente.",
+    "El sistema es muy incómodo de usar.",
+    "Me siento muy confiado usando el sistema.",
+    "Necesité aprender muchas cosas antes de poder empezar a usar este sistema.",
+  ];
+
+  const SCALE_ENDS = ["Muy en desacuerdo", "Muy de acuerdo"];
+
+  const questionsEl = document.getElementById("questions");
+  const progressTrack = document.getElementById("progress-track");
+
+  QUESTIONS.forEach((text, i) => {
+    const n = i + 1;
+
+    const dot = document.createElement("div");
+    dot.className = "progress-dot";
+    dot.id = `dot-${n}`;
+    progressTrack.appendChild(dot);
+
+    const card = document.createElement("div");
+    card.className = "field-card";
+    card.innerHTML = `
+      <p class="qnum">Pregunta ${n} de ${QUESTIONS.length}</p>
+      <p class="question">${text}</p>
+      <div class="scale" role="radiogroup" aria-label="${text}">
+        ${[1, 2, 3, 4, 5].map(v => `
+          <label>
+            <input type="radio" name="q${n}" value="${v}" required />
+            <span>${v}</span>
+          </label>
+        `).join("")}
+      </div>
+      <div class="scale-labels"><span>${SCALE_ENDS[0]}</span><span>${SCALE_ENDS[1]}</span></div>
+    `;
+    questionsEl.appendChild(card);
+
+    card.querySelectorAll(`input[name="q${n}"]`).forEach(input => {
+      input.addEventListener("change", () => {
+        document.getElementById(`dot-${n}`).classList.add("done");
+      });
+    });
+  });
+
+  const form = document.getElementById("sus-form");
+  const missingNote = document.getElementById("missing-note");
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const name = document.getElementById("participant-name").value.trim();
+    const answers = [];
+    let missing = [];
+
+    for (let i = 1; i <= QUESTIONS.length; i++) {
+      const checked = form.querySelector(`input[name="q${i}"]:checked`);
+      if (!checked) missing.push(i);
+      answers.push(checked ? Number(checked.value) : null);
+    }
+
+    if (!name) {
+      missingNote.textContent = "Falta tu nombre.";
+      document.getElementById("participant-name").focus();
+      return;
+    }
+    if (missing.length) {
+      missingNote.textContent = `Faltan ${missing.length} pregunta(s) por responder (#${missing.join(", ")}).`;
+      document.querySelector(`input[name="q${missing[0]}"]`).closest(".field-card").scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    missingNote.textContent = "";
+
+    // Formula SUS estandar: impares (X-1), pares (5-X), suma x 2.5
+    let total = 0;
+    answers.forEach((val, idx) => {
+      const isOdd = (idx + 1) % 2 === 1;
+      total += isOdd ? (val - 1) : (5 - val);
+    });
+    const score = Math.round(total * 2.5 * 10) / 10;
+
+    showResult(name, score, answers);
+  });
+
+  function showResult(name, score, answers) {
+    document.getElementById("form-section").classList.add("hide");
+    const result = document.getElementById("result");
+    result.classList.add("show");
+
+    const good = score >= 75;
+    document.getElementById("result-name-label").textContent = `Resultado de ${name}`;
+    const scoreEl = document.getElementById("result-score");
+    scoreEl.textContent = score.toFixed(1);
+    scoreEl.className = "result-score " + (good ? "good" : "warn");
+
+    const badge = document.getElementById("result-badge");
+    badge.textContent = good ? "Por encima del umbral (≥ 75)" : "Por debajo del umbral (< 75)";
+    badge.className = "result-badge " + (good ? "good" : "warn");
+
+    const line = `${name} | Score SUS: ${score.toFixed(1)} | Respuestas: ${answers.join(",")}`;
+    document.getElementById("copy-box").textContent = line;
+
+    document.getElementById("copy-btn").addEventListener("click", () => {
+      navigator.clipboard.writeText(line);
+      const btn = document.getElementById("copy-btn");
+      const original = btn.textContent;
+      btn.textContent = "¡Copiado!";
+      setTimeout(() => { btn.textContent = original; }, 1500);
+    });
+
+    const mailBody = encodeURIComponent(
+      `Resultado del cuestionario SUS - App01Mingesoft\n\nNombre: ${name}\nScore SUS: ${score.toFixed(1)}\nRespuestas (P1-P10): ${answers.join(", ")}`
+    );
+    document.getElementById("mailto-btn").href =
+      `mailto:cosorio@isolutions.cl?subject=${encodeURIComponent("Resultado SUS - " + name)}&body=${mailBody}`;
+
+    result.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+</script>

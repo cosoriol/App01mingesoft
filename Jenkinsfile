@@ -84,7 +84,7 @@ pipeline {
                 sh '''
                     sleep 20
                     curl -f http://${DO_SERVER_IP}/health
-                    curl -f http://${DO_SERVER_IP}/api/packages
+                    curl -f http://${DO_SERVER_IP}/api/packages/available
                 '''
             }
         }
